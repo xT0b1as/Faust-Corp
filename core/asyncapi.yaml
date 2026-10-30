@@ -124,6 +124,7 @@ components:
         # Projects (project lead + memory folder)
         - $ref: '#/components/schemas/ProjectLeadRejected'
         - $ref: '#/components/schemas/AgentCommandRejected'
+        - $ref: '#/components/schemas/HubNodes'
         # Terminal (standalone embedded terminal control plane)
         - $ref: '#/components/schemas/TerminalAvailability'
         - $ref: '#/components/schemas/TerminalSessionOpened'
@@ -208,6 +209,9 @@ components:
           description: |
             Per-agent name shown instead of the Directory name, so several agents
             in one Directory stay distinguishable. Absent for unnamed agents.
+        node:
+          type: string
+          description: Hub mode only. Name of the machine (node) the agent runs on.
         isExternal:
           type: boolean
         palette:
@@ -896,6 +900,32 @@ components:
           type: string
           description: Human-readable cause.
 
+    HubNodes:
+      description: |
+        Hub mode only. The machines (nodes) this office aggregates and whether
+        each is connected right now. Sent on connect and on every change.
+      type: object
+      additionalProperties: false
+      required: [type, nodes]
+      properties:
+        type:
+          const: hubNodes
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/HubNode'
+
+    HubNode:
+      description: One machine in a hub's office.
+      type: object
+      additionalProperties: false
+      required: [name, connected]
+      properties:
+        name:
+          type: string
+        connected:
+          type: boolean
+
     AgentCommandRejected:
       description: An `agentCommand` could not start. Sent to the requesting client only.
       type: object
@@ -1330,6 +1360,9 @@ components:
         account:
           type: string
           description: Claude config directory for this Directory's agents. Empty = default account.
+        node:
+          type: string
+          description: Hub mode only. Machine (node) to save a NEW Directory on.
 
     RemoveDirectory:
       description: >-
@@ -1478,6 +1511,9 @@ components:
           description: |
             Claude account for agents launched here: its config directory
             (CLAUDE_CONFIG_DIR). Absent = the default account (~/.claude).
+        node:
+          type: string
+          description: Hub mode only. Name of the machine (node) this Directory lives on.
 
     DirectorySource:
       description: |

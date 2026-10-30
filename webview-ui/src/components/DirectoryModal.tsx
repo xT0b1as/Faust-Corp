@@ -12,6 +12,8 @@ export interface DirectoryModalValues {
   areas: string[];
   /** Claude config directory (second account); empty = default account. */
   account: string;
+  /** Hub mode: machine to create a NEW Directory on. */
+  node?: string;
 }
 
 interface DirectoryModalProps {
@@ -28,6 +30,8 @@ interface DirectoryModalProps {
   areas: string[];
   /** Areas already mapped to the Directory being edited. */
   assignedAreas: string[];
+  /** Hub mode: the machines a new Directory can live on. Empty otherwise. */
+  nodes: string[];
   onSubmit: (values: DirectoryModalValues) => void;
   onDelete: () => void;
   onClose: () => void;
@@ -54,6 +58,7 @@ export function DirectoryModal({
   suggestions,
   areas,
   assignedAreas,
+  nodes,
   onSubmit,
   onDelete,
   onClose,
@@ -61,6 +66,7 @@ export function DirectoryModal({
   const [name, setName] = useState('');
   const [path, setPath] = useState('');
   const [account, setAccount] = useState('');
+  const [node, setNode] = useState('');
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
 
   // Refill from whatever the modal was opened on. Keyed on isOpen too, so
@@ -70,6 +76,7 @@ export function DirectoryModal({
     setName(editing?.name ?? '');
     setPath(editing?.path ?? '');
     setAccount(editing?.account ?? '');
+    setNode(nodes[0] ?? '');
     setSelectedAreas(assignedAreas);
     // assignedAreas is derived per render; keying the refill on it would reset
     // the multi-select on every keystroke. Opening the modal is the only moment
@@ -85,6 +92,7 @@ export function DirectoryModal({
       path: path.trim(),
       areas: selectedAreas,
       account: account.trim(),
+      ...(!editing && node ? { node } : {}),
     });
   };
 
@@ -148,6 +156,22 @@ export function DirectoryModal({
             className="text-sm py-2 px-4 bg-bg border-2 border-border rounded-none text-text"
           />
         </label>
+        {!editing && nodes.length > 0 && (
+          <label className="flex flex-col gap-2 text-xs text-text-muted">
+            Rechner
+            <select
+              value={node}
+              onChange={(e) => setNode(e.target.value)}
+              className="text-sm py-2 px-4 bg-bg border-2 border-border rounded-none text-text"
+            >
+              {nodes.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className="flex flex-col gap-2 text-xs text-text-muted">
           Claude Konto (Konfigurationsordner, leer = Standard)
           <input

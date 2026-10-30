@@ -142,6 +142,7 @@ export function useDirectoryEditor({
         name: values.name,
         path: values.path,
         account: values.account,
+        ...(values.node ? { node: values.node } : {}),
         // Identifies the entry being edited, so a re-pointed path replaces it
         // instead of adding a second Directory.
         ...(editing ? { previousPath: editing.path } : {}),

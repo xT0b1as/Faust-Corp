@@ -100,6 +100,7 @@ function App() {
     directoryRejection,
     directorySaved,
     directorySuggestions,
+    hubNodes,
     agentDirectoryNames,
     externalAssetDirectories,
     lastSeenVersion,
@@ -286,6 +287,8 @@ function App() {
     [areaMappings, setAreaMappings],
   );
 
+  const hubNodeNames = useMemo(() => hubNodes.map((n) => n.name), [hubNodes]);
+
   // "Abteilung gründen": save the Directory first; only once the host has
   // accepted it (directorySaved, carrying the stored name) is the room built,
   // the Area mapped and the lead started -- a refused path leaves no room behind.
@@ -305,6 +308,7 @@ function App() {
       name: values.name,
       path: values.path,
       account: values.account,
+      ...(values.node ? { node: values.node } : {}),
     });
   }, []);
   useEffect(() => {
@@ -897,6 +901,7 @@ function App() {
         isOpen={departmentModal.open}
         error={departmentModal.error}
         pending={departmentModal.pending !== null}
+        nodes={hubNodeNames}
         onSubmit={submitDepartment}
         onClose={() => setDepartmentModal({ open: false, error: null, pending: null })}
       />
@@ -915,6 +920,7 @@ function App() {
         editing={directoryEditor.modal.editing}
         error={directoryEditor.error}
         suggestions={directorySuggestions}
+        nodes={hubNodeNames}
         areas={areaLabels}
         assignedAreas={directoryEditor.assignedAreas}
         onSubmit={directoryEditor.submit}

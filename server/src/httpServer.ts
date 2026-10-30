@@ -22,6 +22,9 @@ import {
   WS_CLOSE_FORBIDDEN_ORIGIN,
   WS_CLOSE_UNAUTHORIZED,
 } from './constants.js';
+import type { HubNodeConfig } from './hub/hubNodes.js';
+import { HubSession, type HubSocket } from './hub/hubSession.js';
+import { registerHubTerminalRoute } from './hub/hubTerminalRoute.js';
 import { setMcpEndpoint } from './projects/mcpEndpoint.js';
 import { registerMcpRoute } from './projects/mcpRoute.js';
 import { claudeProvider } from './providers/index.js';
@@ -67,6 +70,8 @@ export interface HttpServerOptions {
    *  privileged standalone handshake may arrive under -- e.g. a reverse proxy's
    *  public name. See wsAuth.privilegedHostnames. */
   allowedHosts?: readonly string[];
+  /** Hub mode: aggregate these machines' offices instead of running agents here. */
+  hubNodes?: HubNodeConfig[];
 }
 
 /** Result of createHttpServer(). */
@@ -76,6 +81,16 @@ export interface HttpServerHandle {
 }
 
 const startTime = Date.now();
+
+/** Local messages a hub never sends: the nodes' versions replace them. */
+const HUB_REPLACED_LOCAL = new Set(['directoriesLoaded', 'terminalAvailability']);
+
+/** Node 22's global WebSocket client, typed as the slice the hub uses. */
+function hubSocketFactory(url: string): HubSocket {
+  const WebSocketCtor = (globalThis as { WebSocket?: new (url: string) => HubSocket }).WebSocket;
+  if (!WebSocketCtor) throw new Error('Hub mode needs Node.js 22 or newer (global WebSocket).');
+  return new WebSocketCtor(url);
+}
 
 /**
  * Create a Fastify server with hook endpoint, health check, and WebSocket support.
@@ -116,11 +131,20 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
   registerHealthRoute(app);
   registerHookRoute(app, options);
   registerWebSocketRoute(app, options, allowedHostnames);
-  registerTerminalRoutes(app, {
-    token: options.token,
-    allowedHostnames,
-    ptyManager: options.ptyManager,
-  });
+  if (options.hubNodes) {
+    registerHubTerminalRoute(app, {
+      token: options.token,
+      allowedHostnames,
+      nodes: options.hubNodes,
+      socketFactory: hubSocketFactory,
+    });
+  } else {
+    registerTerminalRoutes(app, {
+      token: options.token,
+      allowedHostnames,
+      ptyManager: options.ptyManager,
+    });
+  }
   registerMcpRoute(app, bearerAuth(options.token), () => {
     const { runtime, ptyManager, store } = options;
     if (!runtime || !ptyManager) return null;
@@ -238,6 +262,22 @@ function registerWebSocketRoute(
 
     const { store } = options;
 
+    // Hub mode: this browser's view of the nodes (see hub/hubSession.ts). The
+    // hub's own Directory list and terminal state are meaningless here -- the
+    // session sends the nodes' instead.
+    const hub = options.hubNodes
+      ? new HubSession({
+          nodes: options.hubNodes,
+          send: (m) => safeSend(socket, m),
+          hubSeats: () => store.getAdapter()?.loadSeats() ?? {},
+          socketFactory: hubSocketFactory,
+        })
+      : null;
+    const send = (message: Record<string, unknown>) => {
+      if (hub && HUB_REPLACED_LOCAL.has(message.type as string)) return;
+      safeSend(socket, message);
+    };
+
     // Pipe store events to WebSocket client
     const onAgentAdded = (id: number, agent: AgentState) => {
       safeSend(socket, {
@@ -261,7 +301,7 @@ function registerWebSocketRoute(
     };
 
     const onBroadcast = (message: Record<string, unknown>) => {
-      safeSend(socket, message);
+      send(message);
     };
 
     store.on('agentAdded', onAgentAdded);
@@ -275,7 +315,8 @@ function registerWebSocketRoute(
         if (!options.embedded && msg.type) {
           console.log('[Pixel Agents] WS client message:', msg.type);
         }
-        handleClientMessage(msg, (m) => safeSend(socket, m), {
+        if (hub && privileged && hub.route(msg)) return;
+        handleClientMessage(msg, send, {
           store,
           runtime: options.runtime,
           cache: options.assetCache ?? null,
@@ -284,12 +325,14 @@ function registerWebSocketRoute(
           privileged,
           ptyManager: options.ptyManager,
         });
+        if (hub && msg.type === 'webviewReady') hub.sendSnapshot();
       } catch {
         // Malformed JSON, ignore
       }
     });
 
     socket.on('close', () => {
+      hub?.dispose();
       store.off('agentAdded', onAgentAdded);
       store.off('agentRemoved', onAgentRemoved);
       store.off('broadcast', onBroadcast);

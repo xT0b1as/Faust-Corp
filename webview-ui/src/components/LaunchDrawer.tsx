@@ -177,6 +177,15 @@ function DirectoryRow({
           <span className="overflow-hidden text-ellipsis" title={directory.path}>
             {directory.name}
           </span>
+          {directory.node && (
+            <span
+              aria-hidden="true"
+              title={`Rechner: ${directory.node}`}
+              className="shrink-0 text-2xs text-text-muted border-2 border-border pl-4 pr-2 leading-none"
+            >
+              {directory.node}
+            </span>
+          )}
           {directory.account && (
             <span
               aria-hidden="true"

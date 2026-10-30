@@ -45,6 +45,7 @@ export type ServerMessage =
   | DirectorySuggestions
   | ProjectLeadRejected
   | AgentCommandRejected
+  | HubNodes
   | TerminalAvailability
   | TerminalSessionOpened
   | TerminalSessionClosed
@@ -93,6 +94,7 @@ export interface AgentCreated {
   id: number;
   directoryName?: string;
   label?: string;
+  node?: string;
   isExternal?: boolean;
   palette?: number;
   hueShift?: number;
@@ -342,6 +344,7 @@ export interface Directory {
   path: string;
   source: DirectorySource;
   account?: string;
+  node?: string;
 }
 
 export type DirectorySource = 'user' | 'host';
@@ -372,6 +375,16 @@ export interface AgentCommandRejected {
   type: 'agentCommandRejected';
   id: number;
   reason: string;
+}
+
+export interface HubNodes {
+  type: 'hubNodes';
+  nodes: HubNode[];
+}
+
+export interface HubNode {
+  name: string;
+  connected: boolean;
 }
 
 export interface TerminalAvailability {
@@ -524,6 +537,7 @@ export interface SaveDirectory {
   path: string;
   previousPath?: string;
   account?: string;
+  node?: string;
 }
 
 export interface RemoveDirectory {

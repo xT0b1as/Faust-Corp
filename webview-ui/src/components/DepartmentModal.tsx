@@ -8,6 +8,8 @@ export interface DepartmentValues {
   name: string;
   path: string;
   account: string;
+  /** Hub mode: the machine the department lives on. */
+  node?: string;
 }
 
 interface DepartmentModalProps {
@@ -16,6 +18,8 @@ interface DepartmentModalProps {
   error: string | null;
   /** True while the save is on its way; the button waits. */
   pending: boolean;
+  /** Hub mode: machines to choose from. Empty otherwise. */
+  nodes: string[];
   onSubmit: (values: DepartmentValues) => void;
   onClose: () => void;
 }
@@ -28,25 +32,34 @@ export function DepartmentModal({
   isOpen,
   error,
   pending,
+  nodes,
   onSubmit,
   onClose,
 }: DepartmentModalProps) {
   const [name, setName] = useState('');
   const [path, setPath] = useState('');
   const [account, setAccount] = useState('');
+  const [node, setNode] = useState('');
 
   useEffect(() => {
     if (!isOpen) return;
     setName('');
     setPath('');
     setAccount('');
+    setNode(nodes[0] ?? '');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
 
   if (!isOpen) return null;
 
   const submit = () => {
     if (pending || !name.trim() || !path.trim()) return;
-    onSubmit({ name: name.trim(), path: path.trim(), account: account.trim() });
+    onSubmit({
+      name: name.trim(),
+      path: path.trim(),
+      account: account.trim(),
+      ...(node ? { node } : {}),
+    });
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
@@ -89,6 +102,22 @@ export function DepartmentModal({
       >
         {field('Name', name, setName, 'Sport App', true)}
         {field('Ordner', path, setPath, '~/code/sport-app')}
+        {nodes.length > 0 && (
+          <label className="flex flex-col gap-2 text-xs text-text-muted">
+            Rechner
+            <select
+              value={node}
+              onChange={(e) => setNode(e.target.value)}
+              className="text-sm py-2 px-4 bg-bg border-2 border-border rounded-none text-text"
+            >
+              {nodes.map((n) => (
+                <option key={n} value={n}>
+                  {n}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         {field('Claude Konto (leer = Standard)', account, setAccount, '~/.claude-arbeit')}
         <p className="text-xs text-text-muted m-0">
           Baut einen Raum mit zwei Arbeitsplätzen an das Büro an und setzt Wagner als Projektleiter

@@ -40,6 +40,9 @@ const EMPTY_STATE: AdapterState = { agents: [], seats: {} };
 
 export interface FileStateAdapterOptions {
   namespace: ConfigNamespace;
+  /** Name of the agents/seats file, when it must differ from the namespace's
+   *  (a hub on the same machine as a node keeps its seats apart). */
+  stateName?: string;
 }
 
 export class FileStateAdapter implements StateAdapter {
@@ -51,7 +54,7 @@ export class FileStateAdapter implements StateAdapter {
     this.stateFilePath = path.join(
       os.homedir(),
       LAYOUT_FILE_DIR,
-      `${options.namespace}-state.json`,
+      `${options.stateName ?? options.namespace}-state.json`,
     );
   }
 

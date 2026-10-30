@@ -29,7 +29,8 @@
   ],
   "main": "./dist/extension.js",
   "bin": {
-    "pixel-agents": "./dist/cli.js"
+    "pixel-agents": "./dist/cli.js",
+    "faust-corp": "./dist/cli.js"
   },
   "files": [
     "CHANGELOG.md",

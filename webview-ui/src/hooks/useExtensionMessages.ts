@@ -71,6 +71,14 @@ export interface Directory {
   source: 'user' | 'host';
   /** Claude config directory for agents launched here; absent = default account. */
   account?: string;
+  /** Hub mode: the machine this Directory lives on. */
+  node?: string;
+}
+
+/** Hub mode: one aggregated machine. */
+export interface HubNode {
+  name: string;
+  connected: boolean;
 }
 
 /** A refused saveDirectory, shown inline in the Directory modal. `seq` rises
@@ -113,6 +121,8 @@ interface ExtensionMessageState {
   /** Paths the host recovered from past sessions, offered as taps in the
    *  Directory modal. Refreshed every time the modal asks. */
   directorySuggestions: string[];
+  /** Hub mode only; empty for a normal office. */
+  hubNodes: HubNode[];
   /** Distinct directoryNames seen across agents this session — source for the Areas Directory dropdown. */
   agentDirectoryNames: string[];
   externalAssetDirectories: string[];
@@ -200,6 +210,7 @@ export function useExtensionMessages(
   const [directoryRejection, setDirectoryRejection] = useState<DirectoryRejection | null>(null);
   const [directorySaved, setDirectorySaved] = useState<DirectorySaved | null>(null);
   const [directorySuggestions, setDirectorySuggestions] = useState<string[]>([]);
+  const [hubNodes, setHubNodes] = useState<HubNode[]>([]);
   const [agentDirectoryNames, setAgentDirectoryNames] = useState<string[]>([]);
   const [externalAssetDirectories, setExternalAssetDirectories] = useState<string[]>([]);
   const [lastSeenVersion, setLastSeenVersion] = useState('');
@@ -352,7 +363,10 @@ export function useExtensionMessages(
         const teammateParentId = msg.parentAgentId as number | undefined;
         const teamName = msg.teamName as string | undefined;
         const label = msg.label as string | undefined;
-        if (label) os.agentLabels.set(id, label);
+        const node = msg.node as string | undefined;
+        // Hub mode: say which machine the agent runs on.
+        const shown = node ? `${label ?? directoryName ?? 'Agent'} @${node}` : label;
+        if (shown) os.agentLabels.set(id, shown);
         else os.agentLabels.delete(id);
         setAgents((prev) => (prev.includes(id) ? prev : [...prev, id]));
         // Don't auto-select teammates (keep focus on lead)
@@ -741,6 +755,8 @@ export function useExtensionMessages(
         setDirectories(directories);
       } else if (msg.type === 'directorySuggestions') {
         setDirectorySuggestions((msg.paths ?? []) as string[]);
+      } else if (msg.type === 'hubNodes') {
+        setHubNodes((msg.nodes ?? []) as HubNode[]);
       } else if (msg.type === 'directorySaved') {
         const directory = msg.directory as Directory;
         setDirectorySaved((prev) => ({ directory, seq: (prev?.seq ?? 0) + 1 }));
@@ -899,6 +915,7 @@ export function useExtensionMessages(
     directoryRejection,
     directorySaved,
     directorySuggestions,
+    hubNodes,
     agentDirectoryNames,
     externalAssetDirectories,
     lastSeenVersion,

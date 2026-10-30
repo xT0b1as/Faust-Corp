@@ -32,6 +32,7 @@ import {
   WILDCARD_HOSTNAMES,
 } from './constants.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
+import { type HubNodeConfig, parseNodeArg } from './hub/hubNodes.js';
 import { claudeProvider, copyHookScript, hookProviderById } from './providers/index.js';
 import { PixelAgentsServer } from './server.js';
 import { PtySessionManager } from './terminal/ptySessionManager.js';
@@ -53,6 +54,8 @@ export interface CliArgs {
   allowedHosts: string[];
   /** --rotate-token: replace the persisted server token before starting. */
   rotateToken: boolean;
+  /** `hub` subcommand: the machines (`--node name=url`) this office aggregates. */
+  hubNodes?: HubNodeConfig[];
 }
 
 /** Thrown by parseArgs on an invalid --port. Kept separate from process.exit so
@@ -67,8 +70,17 @@ export function parseArgs(argv: string[]): CliArgs {
     allowedHosts: [],
     rotateToken: false,
   };
-  for (let i = 0; i < argv.length; i++) {
-    if (argv[i] === '--port' || argv[i] === '-p') {
+  const isHub = argv[0] === 'hub';
+  if (isHub) args.hubNodes = [];
+  for (let i = isHub ? 1 : 0; i < argv.length; i++) {
+    if (argv[i] === '--node' && args.hubNodes) {
+      try {
+        args.hubNodes.push(parseNodeArg(argv[i + 1] ?? ''));
+      } catch (err) {
+        throw new CliArgsError(`--node: ${err instanceof Error ? err.message : String(err)}`);
+      }
+      i++;
+    } else if (argv[i] === '--port' || argv[i] === '-p') {
       const raw = argv[i + 1];
       if (raw === undefined) {
         throw new CliArgsError(
@@ -115,9 +127,22 @@ Options:
                         old one (bookmarks, other devices) stops working
   --no-terminal         Disable the embedded terminal (watch agents only; no
                         launching or attaching from the browser)
-  --help                Show this help message`);
+  --help                Show this help message
+
+Hub (one office over several machines):
+  faust-corp hub --node <name>=<url> [--node ...] [options]
+                        Each node runs a normal server; <url> is its tokened
+                        URL, reached over Tailscale or an SSH tunnel, e.g.
+                        --node pc=https://pc.tailnet.ts.net/?token=...
+                        --node laptop=http://127.0.0.1:3101/?token=...`);
       process.exit(0);
     }
+  }
+  if (args.hubNodes && args.hubNodes.length === 0) {
+    throw new CliArgsError('hub needs at least one --node name=url.');
+  }
+  if (args.hubNodes && new Set(args.hubNodes.map((n) => n.name)).size !== args.hubNodes.length) {
+    throw new CliArgsError('hub: every --node needs a distinct name.');
   }
   return args;
 }
@@ -227,8 +252,18 @@ async function main(): Promise<void> {
 
   // ── Store + adapter (shared settings + standalone-scoped agents/seats) ──
   const store = new AgentStateStore();
-  const adapter = new FileStateAdapter({ namespace: 'standalone' });
+  // A hub keeps its seats in hub-state.json, so a node on the same machine
+  // (standalone-state.json) never overwrites them.
+  const adapter = new FileStateAdapter({
+    namespace: 'standalone',
+    ...(args.hubNodes ? { stateName: 'hub' } : {}),
+  });
   store.setAdapter(adapter);
+
+  if (args.hubNodes) {
+    await runHub(args, args.hubNodes, store, staticDir, assetCache);
+    return;
+  }
 
   // ── Create server ──
   const server = new PixelAgentsServer();
@@ -438,6 +473,51 @@ async function main(): Promise<void> {
     console.error('Failed to start server:', err);
     process.exit(1);
   }
+}
+
+/**
+ * Hub mode: serve the office (layout, seats, settings) and aggregate the
+ * nodes' agents. No agents, hooks or terminals of its own -- Claude does not
+ * even need to be installed here.
+ */
+async function runHub(
+  args: CliArgs,
+  nodes: HubNodeConfig[],
+  store: AgentStateStore,
+  staticDir: string,
+  assetCache: AssetCache,
+): Promise<void> {
+  if (!(globalThis as { WebSocket?: unknown }).WebSocket) {
+    console.error('[Pixel Agents] Hub mode needs Node.js 22 or newer.');
+    process.exit(1);
+  }
+  const server = new PixelAgentsServer();
+  const config = await server.start({
+    store,
+    embedded: false,
+    host: args.host,
+    port: args.port,
+    staticDir,
+    assetCache,
+    ptyManager: PtySessionManager.disabled('Hub: terminals run on the nodes.'),
+    allowedHosts: args.allowedHosts,
+    rotateToken: args.rotateToken,
+    hubNodes: nodes,
+  });
+  const displayHost =
+    args.host === '0.0.0.0' || args.host === '::' || args.host === '' ? '127.0.0.1' : args.host;
+  console.log(
+    `[Pixel Agents] Hub over: ${nodes.map((n) => `${n.name} (${n.baseUrl})`).join(', ')}`,
+  );
+  console.log(
+    `\n  Faust Corp hub running at http://${displayHost}:${config.port}/?token=${config.token}\n`,
+  );
+  const shutdown = () => {
+    server.stop();
+    process.exit(0);
+  };
+  process.on('SIGINT', shutdown);
+  process.on('SIGTERM', shutdown);
 }
 
 // Only auto-run when this file is executed directly (`node dist/cli.js`), not
