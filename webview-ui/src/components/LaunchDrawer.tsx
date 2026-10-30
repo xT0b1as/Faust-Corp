@@ -211,9 +211,12 @@ function DirectoryRow({
         onClick={() => onStartLead(directory)}
         aria-label={`Projektleiter für ${directory.name}`}
         title="Projektleiter (richtet das Projekt beim ersten Mal ein)"
-        className="shrink-0 self-stretch flex items-center px-8 bg-transparent border-none rounded-none cursor-pointer text-sm leading-none text-text-muted hover:text-text"
+        className="shrink-0 self-stretch flex items-center px-8 pointer-coarse:px-14 bg-transparent border-none rounded-none cursor-pointer text-sm leading-none text-text-muted hover:text-text"
       >
-        <span className="material-symbols-sharp text-[12px]" aria-hidden="true">
+        <span
+          className="material-symbols-sharp text-[12px] pointer-coarse:text-[18px]"
+          aria-hidden="true"
+        >
           supervisor_account
         </span>
       </button>
@@ -221,9 +224,12 @@ function DirectoryRow({
         onClick={() => onLaunchWithTask(directory)}
         aria-label={`Neuer Chat mit Auftrag in ${directory.name}`}
         title="Neuer Chat mit Auftrag"
-        className="shrink-0 self-stretch flex items-center px-8 bg-transparent border-none rounded-none cursor-pointer text-sm leading-none text-text-muted hover:text-text"
+        className="shrink-0 self-stretch flex items-center px-8 pointer-coarse:px-14 bg-transparent border-none rounded-none cursor-pointer text-sm leading-none text-text-muted hover:text-text"
       >
-        <span className="material-symbols-sharp text-[12px]" aria-hidden="true">
+        <span
+          className="material-symbols-sharp text-[12px] pointer-coarse:text-[18px]"
+          aria-hidden="true"
+        >
           add_task
         </span>
       </button>

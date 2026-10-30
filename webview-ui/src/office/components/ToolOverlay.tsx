@@ -404,7 +404,7 @@ export function ToolOverlay({
                         e.stopPropagation();
                         action();
                       }}
-                      className="text-2xs! py-0! px-4!"
+                      className="text-2xs! py-0! px-4! pointer-coarse:text-xs! pointer-coarse:py-4! pointer-coarse:px-8!"
                     >
                       {text}
                     </Button>
