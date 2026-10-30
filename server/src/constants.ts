@@ -186,3 +186,5 @@ export const AGENT_COMMAND_HANDOVER_TIMEOUT_MS = 10 * 60_000;
 /** Delay before the secretary's message is typed into a project lead it just
  *  started (the CLI queues it behind the lead's start prompt). */
 export const SECRETARY_LEAD_BOOT_MS = 8_000;
+/** Window in which phone notifications are bundled into one message. */
+export const NOTIFY_BATCH_MS = 20_000;

@@ -76,6 +76,8 @@ export interface HttpServerOptions {
   /** Hub mode: the URL the nodes reach this hub under (e.g. its Tailscale
    *  name). Enables the secretary's cross-machine `faust-hub` tools. */
   hubPublicUrl?: string;
+  /** Hub mode: ntfy topic for phone notifications across every node. */
+  hubNtfyUrl?: string;
 }
 
 /** Result of createHttpServer(). */
@@ -133,7 +135,9 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
   const allowedHostnames = privilegedHostnames(host, options.allowedHosts ?? []);
 
   // Hub mode: one always-on overview of every node, served to the secretary.
-  const hubOverview = options.hubNodes ? new HubOverview(options.hubNodes, hubSocketFactory) : null;
+  const hubOverview = options.hubNodes
+    ? new HubOverview(options.hubNodes, hubSocketFactory, options.hubNtfyUrl)
+    : null;
   if (hubOverview) {
     registerMcpEndpoint(app, MCP_HUB_PATH, bearerAuth(options.token), () =>
       hubOverview.asToolProvider(),

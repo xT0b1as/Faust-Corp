@@ -34,6 +34,7 @@ import {
 } from './constants.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
 import { type HubNodeConfig, parseNodeArg } from './hub/hubNodes.js';
+import { Notifier } from './projects/notifier.js';
 import { claudeProvider, copyHookScript, hookProviderById } from './providers/index.js';
 import { PixelAgentsServer } from './server.js';
 import { PtySessionManager } from './terminal/ptySessionManager.js';
@@ -59,6 +60,8 @@ export interface CliArgs {
   hubNodes?: HubNodeConfig[];
   /** `hub --public-url`: how the nodes reach this hub (secretary overview). */
   hubPublicUrl?: string;
+  /** `--ntfy <url>`: phone notifications to this ntfy topic. */
+  ntfyUrl?: string;
 }
 
 /** Thrown by parseArgs on an invalid --port. Kept separate from process.exit so
@@ -93,6 +96,13 @@ export function parseArgs(argv: string[]): CliArgs {
           );
         }
       }
+      i++;
+    } else if (argv[i] === '--ntfy') {
+      const raw = argv[i + 1] ?? '';
+      if (!/^https?:\/\//.test(raw)) {
+        throw new CliArgsError('--ntfy needs the topic URL, e.g. https://ntfy.sh/<topic>');
+      }
+      args.ntfyUrl = raw;
       i++;
     } else if (argv[i] === '--public-url' && args.hubNodes) {
       const raw = argv[i + 1] ?? '';
@@ -151,6 +161,9 @@ Options:
   --allowed-host <name> Also accept the tokened URL at this host name, e.g. a
                         reverse proxy's (Tailscale Serve). Repeatable. Without
                         it, only localhost and a specific --host are privileged
+  --ntfy <url>          Phone notifications via ntfy (permission requests,
+                        project lead / secretary done), bundled. With a hub,
+                        set it on the hub only
   --rotate-token        Replace the server token. Every URL that carried the
                         old one (bookmarks, other devices) stops working
   --no-terminal         Disable the embedded terminal (watch agents only; no
@@ -313,6 +326,15 @@ async function main(): Promise<void> {
   try {
     // Create runtime first (before server.start, so we can pass it in)
     const runtime = new AgentRuntime(store, claudeProvider);
+
+    if (args.ntfyUrl) {
+      const notifier = new Notifier({
+        url: args.ntfyUrl,
+        nameOf: (id) => store.get(id)?.label ?? store.get(id)?.directoryName,
+        isImportant: (id) => store.get(id)?.projectRole !== undefined,
+      });
+      store.on('broadcast', (message) => notifier.apply(message));
+    }
 
     // Wire hook events: HTTP POST -> runtime -> hookEventHandler -> agents
     server.onHookEvent((providerId, event) => {
@@ -537,6 +559,7 @@ async function runHub(
     rotateToken: args.rotateToken,
     hubNodes: nodes,
     hubPublicUrl: args.hubPublicUrl,
+    hubNtfyUrl: args.ntfyUrl,
   });
   const displayHost =
     args.host === '0.0.0.0' || args.host === '::' || args.host === '' ? '127.0.0.1' : args.host;

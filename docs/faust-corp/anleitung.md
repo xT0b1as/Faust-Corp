@@ -48,6 +48,10 @@ Mit `--public-url https://<hub>.<tailnet>.ts.net` (die Adresse, unter der die Re
 
 Der Hub braucht Node.js 22 oder neuer, aber kein Claude. Figuren zeigen ihren Rechner (`@pc`, `@laptop`), Ordner tragen ein Abzeichen, beim Anlegen wählst du den Rechner aus. Ist ein Rechner aus, verschwinden seine Figuren und kommen beim Wiederverbinden zurück.
 
+## Benachrichtigungen aufs Handy
+
+Mit `--ntfy https://ntfy.sh/<eigenes-geheimes-thema>` meldet sich das Büro über die App ntfy, wenn jemand auf deine Freigabe wartet oder Wagner bzw. Lynkeus fertig sind. Meldungen innerhalb von 20 Sekunden kommen als eine Nachricht. Das Thema wie ein Passwort wählen, jeder mit dem Namen kann mitlesen; ein eigener ntfy Server im Tailnet geht auch. Mit Hub nur am Hub setzen, sonst kommt alles doppelt.
+
 ## Dauerbetrieb
 
 Die Chats eines Rechners hängen an seinem Server: Startet der Server neu, enden sie. Ihr Wissen bleibt in `.faust/`, also startest du danach einfach Wagner wieder. Damit der Server mit dem Rechner startet und nach einem Absturz neu anläuft, liegen Vorlagen in `scripts/faust-corp/`:

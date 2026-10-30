@@ -7,6 +7,8 @@
 
 import type { McpTool, ToolResult } from '../projects/leadTools.js';
 import type { McpToolProvider } from '../projects/mcpRoute.js';
+import { Notifier } from '../projects/notifier.js';
+import { SECRETARY_NAME } from '../projects/secretary.js';
 import { LEAD_NAME } from '../projects/templates.js';
 import { fromHubId, type HubNodeConfig } from './hubNodes.js';
 import { HubSession, type HubSocketFactory } from './hubSession.js';
@@ -67,10 +69,26 @@ export class HubOverview {
   private directories: OverviewDirectory[] = [];
   private readonly session: HubSession;
 
+  private readonly notifier: Notifier | null;
+
   constructor(
     private readonly nodes: HubNodeConfig[],
     socketFactory: HubSocketFactory,
+    ntfyUrl?: string,
   ) {
+    this.notifier = ntfyUrl
+      ? new Notifier({
+          url: ntfyUrl,
+          nameOf: (id) => {
+            const a = this.agents.get(id);
+            return a ? `${a.label ?? a.directoryName ?? 'Agent'} @${a.node}` : undefined;
+          },
+          isImportant: (id) => {
+            const label = this.agents.get(id)?.label ?? '';
+            return label.startsWith(`${LEAD_NAME}:`) || label.startsWith(`${SECRETARY_NAME}:`);
+          },
+        })
+      : null;
     this.session = new HubSession({
       nodes,
       send: (message) => this.apply(message),
@@ -81,6 +99,7 @@ export class HubOverview {
 
   dispose(): void {
     this.session.dispose();
+    this.notifier?.dispose();
   }
 
   private nodeOf(id: number): string {
@@ -90,6 +109,7 @@ export class HubOverview {
 
   /** Fold one remapped node message into the picture. */
   apply(message: Record<string, unknown>): void {
+    this.notifier?.apply(message);
     const id = message.id as number;
     switch (message.type) {
       case 'agentCreated':

@@ -84,6 +84,8 @@ export class PixelAgentsServer {
     hubNodes?: HubNodeConfig[];
     /** Hub mode: URL the nodes reach the hub under (secretary's faust-hub tools). */
     hubPublicUrl?: string;
+    /** Hub mode: ntfy topic for phone notifications across every node. */
+    hubNtfyUrl?: string;
   }): Promise<ServerConfig> {
     const embedded = options?.embedded ?? true;
     const wantsSpa = !embedded;
@@ -152,6 +154,7 @@ export class PixelAgentsServer {
       allowedHosts: standalone?.allowedHosts,
       hubNodes: options?.hubNodes,
       hubPublicUrl: options?.hubPublicUrl,
+      hubNtfyUrl: options?.hubNtfyUrl,
     });
 
     this.app = app;
