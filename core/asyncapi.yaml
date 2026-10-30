@@ -1382,8 +1382,12 @@ components:
         id:
           type: integer
         command:
-          type: string
-          enum: [compact, restartWithHandover]
+          $ref: '#/components/schemas/AgentCommandKind'
+
+    AgentCommandKind:
+      description: A command the office can type into an agent's terminal.
+      type: string
+      enum: [compact, restartWithHandover]
 
     SetShowAreas:
       description: Toggle the Areas overlay (translucent rendering on top of the office).

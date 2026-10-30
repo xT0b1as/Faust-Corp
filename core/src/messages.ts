@@ -540,10 +540,10 @@ export interface StartProjectLead {
 export interface AgentCommand {
   type: 'agentCommand';
   id: number;
-  command: AnonymousSchema_282;
+  command: AgentCommandKind;
 }
 
-export type AnonymousSchema_282 = 'compact' | 'restartWithHandover';
+export type AgentCommandKind = 'compact' | 'restartWithHandover';
 
 export interface RequestDiagnostics {
   type: 'requestDiagnostics';
