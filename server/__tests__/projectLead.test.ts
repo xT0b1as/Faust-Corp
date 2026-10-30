@@ -127,8 +127,9 @@ describe('startProjectLead', () => {
     const lead = store.get(first.ok ? first.agentId : -1);
     expect(lead?.label).toBe(`${LEAD_NAME}: Sport App`);
     expect(lead?.projectRole).toBe('lead');
-    expect(spawnArgs[0].args.slice(2, 3)).toEqual(['--']);
-    expect(spawnArgs[0].args[3]).toContain('.faust/rollen/projektleiter.md');
+    const args = spawnArgs[0].args;
+    expect(args).toContain('--allowedTools');
+    expect(args[args.indexOf('--') + 1]).toContain('.faust/rollen/projektleiter.md');
 
     // A second request selects the running lead instead of launching another.
     const second = startProjectLead(deps(), project);

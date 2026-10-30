@@ -102,10 +102,17 @@ function getSessionDirs(workspacePath: string): string[] {
 function buildLaunchCommand(
   sessionId: string,
   cwd: string,
-  opts?: { bypassPermissions?: boolean; prompt?: string },
+  opts?: {
+    bypassPermissions?: boolean;
+    prompt?: string;
+    mcpConfig?: string;
+    allowedTools?: string[];
+  },
 ): { command: string; args: string[]; env?: Record<string, string> } {
   const args = ['--session-id', sessionId];
   if (opts?.bypassPermissions) args.push('--dangerously-skip-permissions');
+  if (opts?.mcpConfig) args.push('--mcp-config', opts.mcpConfig);
+  if (opts?.allowedTools?.length) args.push('--allowedTools', opts.allowedTools.join(','));
   // Interactive `claude "<prompt>"` submits the prompt as the first turn and
   // stays interactive. `--` keeps a prompt starting with "-" from parsing as a flag.
   const prompt = opts?.prompt?.trim();

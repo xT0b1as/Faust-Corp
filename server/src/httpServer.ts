@@ -11,13 +11,19 @@ import type {
   ReloadAssetsSideEffect,
   SetHooksEnabledSideEffect,
 } from './clientMessageHandler.js';
-import { handleClientMessage } from './clientMessageHandler.js';
+import {
+  handleClientMessage,
+  hostDirectoriesFor,
+  KEY_BYPASS_PERMISSIONS,
+} from './clientMessageHandler.js';
 import {
   HOOK_API_PREFIX,
   MAX_HOOK_BODY_SIZE,
   WS_CLOSE_FORBIDDEN_ORIGIN,
   WS_CLOSE_UNAUTHORIZED,
 } from './constants.js';
+import { registerMcpRoute, setMcpEndpoint } from './projects/mcpRoute.js';
+import { claudeProvider } from './providers/index.js';
 import type { PtySessionManager } from './terminal/ptySessionManager.js';
 import { registerTerminalRoutes } from './terminal/terminalRoutes.js';
 import type { AgentState } from './types.js';
@@ -114,12 +120,25 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
     allowedHostnames,
     ptyManager: options.ptyManager,
   });
+  registerMcpRoute(app, bearerAuth(options.token), () => {
+    const { runtime, ptyManager, store } = options;
+    if (!runtime || !ptyManager) return null;
+    return {
+      store,
+      runtime,
+      ptyManager,
+      provider: claudeProvider,
+      hostDirectories: hostDirectoriesFor({ ptyManager }),
+      bypassPermissions: store.getAdapter()?.getSetting(KEY_BYPASS_PERMISSIONS, false) ?? false,
+    };
+  });
 
   // ── Listen ──────────────────────────────────────────────────
 
   await app.listen({ host, port: options.port ?? 0 });
   const address = app.server.address();
   const port = typeof address === 'object' ? (address?.port ?? 0) : 0;
+  setMcpEndpoint(port, options.token);
 
   return { app, port };
 }

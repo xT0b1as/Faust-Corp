@@ -86,7 +86,7 @@ const KEY_GHOST_HEADLESS_AGENTS = 'pixel-agents.ghostHeadlessAgents';
 const KEY_WATCH_ALL_SESSIONS = 'pixel-agents.watchAllSessions';
 const KEY_HOOKS_INFO_SHOWN = 'pixel-agents.hooksInfoShown';
 const KEY_SHOW_AREAS = 'pixel-agents.showAreas';
-const KEY_BYPASS_PERMISSIONS = 'pixel-agents.bypassPermissions';
+export const KEY_BYPASS_PERMISSIONS = 'pixel-agents.bypassPermissions';
 const KEY_SHOW_HOST_DIRECTORIES = 'pixel-agents.showHostDirectories';
 
 /**
@@ -95,7 +95,9 @@ const KEY_SHOW_HOST_DIRECTORIES = 'pixel-agents.showHostDirectories';
  * ptyManager means VS Code embedded mode, whose adapter contributes its
  * workspace folders instead and must not have this server's cwd added to them.
  */
-function hostDirectoriesFor(ctx: ClientMessageContext): HostDirectoryEntry[] {
+export function hostDirectoriesFor(
+  ctx: Pick<ClientMessageContext, 'ptyManager'>,
+): HostDirectoryEntry[] {
   return ctx.ptyManager ? [hostDirectory()] : [];
 }
 

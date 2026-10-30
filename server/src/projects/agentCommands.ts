@@ -40,7 +40,11 @@ function sleep(ms: number): Promise<void> {
 }
 
 /** Type a line and press Enter, apart, so the TUI doesn't treat it as a paste. */
-async function submit(ptyManager: PtySessionManager, id: number, text: string): Promise<void> {
+export async function submitToTerminal(
+  ptyManager: PtySessionManager,
+  id: number,
+  text: string,
+): Promise<void> {
   const session = ptyManager.get(id);
   if (!session) throw new Error('terminal closed');
   session.write(text);
@@ -94,7 +98,7 @@ export function runAgentCommand(
 
   if (command === 'compact') {
     busy.add(id);
-    void submit(deps.ptyManager, id, '/compact')
+    void submitToTerminal(deps.ptyManager, id, '/compact')
       .catch((err) => console.warn(`[Pixel Agents] Agent ${id}: compact failed: ${String(err)}`))
       .finally(() => busy.delete(id));
     return null;
@@ -105,11 +109,11 @@ export function runAgentCommand(
   void (async () => {
     try {
       const turnEnd = waitForTurnEnd(deps.store, id, AGENT_COMMAND_HANDOVER_TIMEOUT_MS);
-      await submit(deps.ptyManager, id, HANDOVER_PROMPT);
+      await submitToTerminal(deps.ptyManager, id, HANDOVER_PROMPT);
       await turnEnd;
-      await submit(deps.ptyManager, id, '/clear');
+      await submitToTerminal(deps.ptyManager, id, '/clear');
       await sleep(AGENT_COMMAND_CLEAR_SETTLE_MS);
-      await submit(
+      await submitToTerminal(
         deps.ptyManager,
         id,
         isLead ? `${leadPrompt()} ${RESUME_PROMPT}` : RESUME_PROMPT,

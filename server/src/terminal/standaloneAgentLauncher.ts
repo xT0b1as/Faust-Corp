@@ -47,6 +47,9 @@ export interface LaunchStandaloneAgentOptions {
    *  Directory already has agents, so parallel sessions stay apart. */
   label?: string;
   projectRole?: 'lead';
+  /** MCP config for this session, built from the id the agent will get. */
+  mcpConfigFor?: (agentId: number) => string | undefined;
+  allowedTools?: string[];
   cols?: number;
   rows?: number;
 }
@@ -72,6 +75,10 @@ export function launchStandaloneAgent(
   const launch = provider.buildLaunchCommand?.(sessionId, cwd, {
     bypassPermissions: options.bypassPermissions,
     prompt: options.prompt,
+    // nextAgentId is claimed below in this same synchronous run, so this is the
+    // id the agent gets.
+    mcpConfig: options.mcpConfigFor?.(store.nextAgentId.current),
+    allowedTools: options.allowedTools,
   });
   if (!launch) {
     console.error('[Pixel Agents] Terminal: provider.buildLaunchCommand is not implemented');

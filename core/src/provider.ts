@@ -135,7 +135,14 @@ export interface HookProvider {
     cwd: string,
     /** prompt: the session's first message (its task), passed so the CLI
      *  starts working on it straight away. */
-    opts?: { bypassPermissions?: boolean; prompt?: string },
+    opts?: {
+      bypassPermissions?: boolean;
+      prompt?: string;
+      /** MCP server config (JSON) to load for this session only. */
+      mcpConfig?: string;
+      /** Tools pre-approved for this session (e.g. its own MCP server). */
+      allowedTools?: string[];
+    },
   ): {
     command: string;
     args: string[];

@@ -11,6 +11,7 @@ import type { HostDirectoryEntry } from '../directories.js';
 import { listDirectories, normalizeDirectoryPath } from '../directories.js';
 import type { PtySessionManager } from '../terminal/ptySessionManager.js';
 import { launchStandaloneAgent } from '../terminal/standaloneAgentLauncher.js';
+import { MCP_SERVER_NAME, mcpConfigForAgent } from './mcpRoute.js';
 import { ensureProjectScaffold } from './projectScaffold.js';
 import { LEAD_NAME, leadPrompt } from './templates.js';
 
@@ -60,6 +61,8 @@ export function startProjectLead(
     prompt: leadPrompt(),
     label: `${LEAD_NAME}: ${directory.name}`,
     projectRole: 'lead',
+    mcpConfigFor: mcpConfigForAgent,
+    allowedTools: [`mcp__${MCP_SERVER_NAME}`],
     bypassPermissions: deps.bypassPermissions,
   });
   if (agentId === null) {
