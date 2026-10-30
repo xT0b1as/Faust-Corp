@@ -20,6 +20,8 @@ interface LaunchDrawerProps {
   onLaunchWithTask: (directory: Directory) => void;
   /** Bring up this Directory's project lead (sets up its memory folder first). */
   onStartLead: (directory: Directory) => void;
+  /** Bring up the office's secretary (the pinned first row). */
+  onStartSecretary: () => void;
   className?: string;
 }
 
@@ -50,6 +52,7 @@ export function LaunchDrawer({
   onEditDirectory,
   onLaunchWithTask,
   onStartLead,
+  onStartSecretary,
   className = '',
 }: LaunchDrawerProps) {
   return (
@@ -63,6 +66,9 @@ export function LaunchDrawer({
         {/* DropdownItem hard-resets to border-none, so the separator lives on
             this wrapper. Pinned: it never scrolls away with the rows. */}
         <div className="shrink-0 border-b-2 border-border">
+          <DropdownItem onClick={onStartSecretary} className="text-base text-accent-bright">
+            Sekretär Lynkeus
+          </DropdownItem>
           <DropdownItem onClick={onAddDirectory} className="text-base text-accent-bright">
             + Directory
           </DropdownItem>

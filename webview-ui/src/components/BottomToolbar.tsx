@@ -18,6 +18,7 @@ interface BottomToolbarProps {
   onEditDirectory: (directory: Directory) => void;
   onLaunchWithTask: (directory: Directory) => void;
   onStartLead: (directory: Directory) => void;
+  onStartSecretary: () => void;
   /** Standalone: server has a working PTY, so agents can be launched here. */
   terminalAvailable: boolean;
   /** Why the terminal is off (shown on the disabled button's tooltip). */
@@ -34,6 +35,7 @@ export function BottomToolbar({
   onEditDirectory,
   onLaunchWithTask,
   onStartLead,
+  onStartSecretary,
   terminalAvailable,
   terminalUnavailableReason,
 }: BottomToolbarProps) {
@@ -119,6 +121,10 @@ export function BottomToolbar({
             onStartLead={(directory) => {
               setIsDrawerOpen(false);
               onStartLead(directory);
+            }}
+            onStartSecretary={() => {
+              setIsDrawerOpen(false);
+              onStartSecretary();
             }}
           />
         </div>

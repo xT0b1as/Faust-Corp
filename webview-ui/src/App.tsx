@@ -173,6 +173,9 @@ function App() {
       label: task?.label,
     });
   }, []);
+  const startSecretary = useCallback(() => {
+    transport.send({ type: 'startSecretary' });
+  }, []);
   const startProjectLead = useCallback((directory: Directory) => {
     transport.send({ type: 'startProjectLead', directoryPath: directory.path });
   }, []);
@@ -669,6 +672,7 @@ function App() {
           onEditDirectory={directoryEditor.edit}
           onLaunchWithTask={setNewChatDirectory}
           onStartLead={startProjectLead}
+          onStartSecretary={startSecretary}
           terminalAvailable={terminalAvailable}
           terminalUnavailableReason={terminalUnavailableReason}
         />
@@ -748,6 +752,7 @@ function App() {
           onEditDirectory={directoryEditor.edit}
           onLaunchWithTask={setNewChatDirectory}
           onStartLead={startProjectLead}
+          onStartSecretary={startSecretary}
           onCloseAgent={handleCloseAgent}
           keyboardOpen={keyboard.keyboardOpen}
         />

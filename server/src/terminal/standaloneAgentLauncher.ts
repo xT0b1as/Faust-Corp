@@ -46,7 +46,7 @@ export interface LaunchStandaloneAgentOptions {
   /** Name shown for the agent. Defaults to a numbered Directory name when the
    *  Directory already has agents, so parallel sessions stay apart. */
   label?: string;
-  projectRole?: 'lead';
+  projectRole?: 'lead' | 'secretary';
   /** MCP config for this session, built from the id the agent will get. */
   mcpConfigFor?: (agentId: number) => string | undefined;
   allowedTools?: string[];

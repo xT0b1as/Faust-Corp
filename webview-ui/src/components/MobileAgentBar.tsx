@@ -34,6 +34,7 @@ interface MobileAgentBarProps {
   onEditDirectory: (directory: Directory) => void;
   onLaunchWithTask: (directory: Directory) => void;
   onStartLead: (directory: Directory) => void;
+  onStartSecretary: () => void;
   /** False when the server has no working PTY — the + card shows disabled. */
   canLaunch: boolean;
   launchUnavailableReason: string | null;
@@ -92,6 +93,7 @@ export function MobileAgentBar({
   onEditDirectory,
   onLaunchWithTask,
   onStartLead,
+  onStartSecretary,
   canLaunch,
   launchUnavailableReason,
   getAppearance,
@@ -322,6 +324,10 @@ export function MobileAgentBar({
             onStartLead={(directory) => {
               setIsLaunchDrawerOpen(false);
               onStartLead(directory);
+            }}
+            onStartSecretary={() => {
+              setIsLaunchDrawerOpen(false);
+              onStartSecretary();
             }}
           />
         </div>

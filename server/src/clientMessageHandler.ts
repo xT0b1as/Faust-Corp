@@ -23,6 +23,7 @@ import { hostDirectory } from './hostDirectory.js';
 import { readLayoutFromFile, writeLayoutToFile } from './layoutPersistence.js';
 import { type AgentCommand, runAgentCommand } from './projects/agentCommands.js';
 import { startProjectLead } from './projects/projectLead.js';
+import { secretaryDir, startSecretary } from './projects/secretary.js';
 import type { ConsentEffects } from './providers/hook/consentExecutor.js';
 import { applyConsentChoice } from './providers/hook/consentExecutor.js';
 import { hooksConsentRequest } from './providers/hook/consentGate.js';
@@ -371,6 +372,31 @@ export function handleClientMessage(
         ? runAgentCommand({ store, ptyManager: ctx.ptyManager }, id, msg.command as AgentCommand)
         : 'Das Terminal ist nicht verfügbar.';
       if (reason) send({ type: 'agentCommandRejected', id, reason });
+      break;
+    }
+
+    case 'startSecretary': {
+      if (!runtime || !ctx.ptyManager) {
+        send({
+          type: 'projectLeadRejected',
+          directoryPath: secretaryDir(),
+          reason: 'Das Terminal ist nicht verfügbar.',
+        });
+        break;
+      }
+      const result = startSecretary({
+        store,
+        runtime,
+        ptyManager: ctx.ptyManager,
+        provider: claudeProvider,
+        hostDirectories: hostDirectoriesFor(ctx),
+        bypassPermissions: adapter?.getSetting(KEY_BYPASS_PERMISSIONS, false) ?? false,
+      });
+      if (!result.ok) {
+        send({ type: 'projectLeadRejected', directoryPath: secretaryDir(), reason: result.reason });
+      } else if (!result.launched) {
+        send({ type: 'agentSelected', id: result.agentId });
+      }
       break;
     }
 

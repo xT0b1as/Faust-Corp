@@ -26,7 +26,7 @@ export interface AgentState {
    *  Directory stay apart. Never an Area-mapping key; that stays directoryName. */
   label?: string;
   /** 'lead' for a project's lead (one per Directory, see projects/). */
-  projectRole?: 'lead';
+  projectRole?: 'lead' | 'secretary';
   /** Timestamp of last JSONL data received (ms since epoch) */
   lastDataAt: number;
   /** Total JSONL lines processed for this agent */
@@ -110,7 +110,7 @@ export interface PersistedAgent {
   folderName?: string;
   /** Per-agent label (see AgentState.label). */
   label?: string;
-  projectRole?: 'lead';
+  projectRole?: 'lead' | 'secretary';
 
   // -- Agent Teams --
   teamName?: string;

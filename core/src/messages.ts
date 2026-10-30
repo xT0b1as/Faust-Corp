@@ -79,6 +79,7 @@ export type ClientMessage =
   | RequestDirectorySuggestions
   | StartProjectLead
   | AgentCommand
+  | StartSecretary
   | RequestDiagnostics;
 
 export interface ProviderCapabilities {
@@ -546,6 +547,10 @@ export interface AgentCommand {
 }
 
 export type AgentCommandKind = 'compact' | 'restartWithHandover';
+
+export interface StartSecretary {
+  type: 'startSecretary';
+}
 
 export interface RequestDiagnostics {
   type: 'requestDiagnostics';

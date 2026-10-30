@@ -183,3 +183,6 @@ export const AGENT_COMMAND_SUBMIT_DELAY_MS = 250;
 export const AGENT_COMMAND_CLEAR_SETTLE_MS = 2_000;
 /** Longest wait for an agent to finish writing its handover before giving up. */
 export const AGENT_COMMAND_HANDOVER_TIMEOUT_MS = 10 * 60_000;
+/** Delay before the secretary's message is typed into a project lead it just
+ *  started (the CLI queues it behind the lead's start prompt). */
+export const SECRETARY_LEAD_BOOT_MS = 8_000;

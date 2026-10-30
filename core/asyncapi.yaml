@@ -163,6 +163,7 @@ components:
         # Projects
         - $ref: '#/components/schemas/StartProjectLead'
         - $ref: '#/components/schemas/AgentCommand'
+        - $ref: '#/components/schemas/StartSecretary'
         - $ref: '#/components/schemas/RequestDiagnostics'
       discriminator: type
 
@@ -1386,6 +1387,18 @@ components:
           type: integer
         command:
           $ref: '#/components/schemas/AgentCommandKind'
+
+    StartSecretary:
+      description: |
+        Bring up the office's secretary (one per office, in
+        ~/.pixel-agents/sekretariat/): launch it, or select it when it is already
+        there. A failure answers `projectLeadRejected` with that folder's path.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: startSecretary
 
     AgentCommandKind:
       description: A command the office can type into an agent's terminal.

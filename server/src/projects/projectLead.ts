@@ -11,7 +11,7 @@ import type { HostDirectoryEntry } from '../directories.js';
 import { listDirectories, normalizeDirectoryPath } from '../directories.js';
 import type { PtySessionManager } from '../terminal/ptySessionManager.js';
 import { launchStandaloneAgent } from '../terminal/standaloneAgentLauncher.js';
-import { MCP_SERVER_NAME, mcpConfigForAgent } from './mcpRoute.js';
+import { MCP_SERVER_NAME, mcpConfigForAgent } from './mcpEndpoint.js';
 import { ensureProjectScaffold } from './projectScaffold.js';
 import { LEAD_NAME, leadPrompt } from './templates.js';
 

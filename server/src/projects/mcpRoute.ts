@@ -10,9 +10,9 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
 import type { LeadToolDeps } from './leadTools.js';
 import { callLeadTool, LEAD_TOOLS } from './leadTools.js';
+import { MCP_PATH_PREFIX } from './mcpEndpoint.js';
+import { callSecretaryTool, SECRETARY_TOOLS } from './secretary.js';
 
-export const MCP_PATH_PREFIX = '/mcp/agent';
-export const MCP_SERVER_NAME = 'faust';
 const DEFAULT_PROTOCOL_VERSION = '2025-06-18';
 
 interface JsonRpcRequest {
@@ -24,25 +24,8 @@ interface JsonRpcRequest {
 
 type Auth = (request: FastifyRequest, reply: FastifyReply) => Promise<void>;
 
-/** Where a lead's MCP endpoint lives; set once the server listens. */
-let endpoint: { port: number; token: string } | null = null;
-
-export function setMcpEndpoint(port: number, token: string): void {
-  endpoint = { port, token };
-}
-
-/** The `--mcp-config` JSON for one lead, or undefined before the server listens. */
-export function mcpConfigForAgent(agentId: number): string | undefined {
-  if (!endpoint) return undefined;
-  return JSON.stringify({
-    mcpServers: {
-      [MCP_SERVER_NAME]: {
-        type: 'http',
-        url: `http://127.0.0.1:${endpoint.port}${MCP_PATH_PREFIX}/${agentId}`,
-        headers: { Authorization: `Bearer ${endpoint.token}` },
-      },
-    },
-  });
+function isSecretary(deps: LeadToolDeps, agentId: number): boolean {
+  return deps.store.get(agentId)?.projectRole === 'secretary';
 }
 
 function handle(
@@ -66,11 +49,13 @@ function handle(
     case 'ping':
       return reply({});
     case 'tools/list':
-      return reply({ tools: LEAD_TOOLS });
+      return reply({ tools: isSecretary(deps, agentId) ? SECRETARY_TOOLS : LEAD_TOOLS });
     case 'tools/call': {
       const name = typeof message.params?.name === 'string' ? message.params.name : '';
       const args = (message.params?.arguments ?? {}) as Record<string, unknown>;
-      const result = callLeadTool(deps, agentId, name, args);
+      const result = isSecretary(deps, agentId)
+        ? callSecretaryTool(deps, name, args)
+        : callLeadTool(deps, agentId, name, args);
       return reply({
         content: [{ type: 'text', text: result.text }],
         isError: result.isError ?? false,

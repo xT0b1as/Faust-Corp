@@ -9,8 +9,10 @@ import { AgentRuntime } from '../src/agentRuntime.js';
 import { AgentStateStore } from '../src/agentStateStore.js';
 import { saveUserDirectory } from '../src/directories.js';
 import type { LeadToolDeps } from '../src/projects/leadTools.js';
-import { mcpConfigForAgent, registerMcpRoute, setMcpEndpoint } from '../src/projects/mcpRoute.js';
+import { mcpConfigForAgent, setMcpEndpoint } from '../src/projects/mcpEndpoint.js';
+import { registerMcpRoute } from '../src/projects/mcpRoute.js';
 import { startProjectLead } from '../src/projects/projectLead.js';
+import { secretaryDir, startSecretary } from '../src/projects/secretary.js';
 import { claudeProvider } from '../src/providers/hook/claude/claude.js';
 import type { IPty, PtyModule } from '../src/terminal/ptyModule.js';
 import { PtySessionManager } from '../src/terminal/ptySessionManager.js';
@@ -150,5 +152,34 @@ describe('project lead MCP tools', () => {
     expect((await tool(leadId, 'chat_beenden', { id: leadId })).isError).toBe(true);
     const testerId = [...store].find(([, a]) => a.label === 'Tester')![0];
     expect((await tool(testerId, 'chats_auflisten')).isError).toBe(true);
+  });
+
+  it('gives the secretary the office-wide tools and lets it reach a lead', async () => {
+    const sec = startSecretary(deps);
+    const secId = sec.ok ? sec.agentId : -1;
+    expect(fs.existsSync(path.join(secretaryDir(), 'CLAUDE.md'))).toBe(true);
+    expect(startSecretary(deps)).toMatchObject({ ok: true, launched: false });
+
+    const list = await rpc(secId, 'tools/list');
+    const names = (list.result.tools as Array<{ name: string }>).map((t) => t.name);
+    expect(names).toContain('nachricht_an_projektleiter');
+
+    const projects = await tool(secId, 'projekte_auflisten');
+    expect(projects.content[0].text).toContain('Sport App');
+    expect(projects.content[0].text).toContain('kein Wagner');
+
+    const lead = startProjectLead(deps, project);
+    const report = await tool(secId, 'lagebericht');
+    expect(report.content[0].text).toContain('Wagner: Sport App');
+    expect(report.content[0].text).not.toContain('Lynkeus');
+
+    const forwarded = await tool(secId, 'nachricht_an_projektleiter', {
+      projekt: 'sport app',
+      text: 'Bitte Login priorisieren',
+    });
+    expect(forwarded.isError).toBe(false);
+    expect(lead.ok).toBe(true);
+    const stand = await tool(secId, 'projekt_stand', { projekt: 'Sport App' });
+    expect(stand.content[0].text).toContain('# Stand');
   });
 });

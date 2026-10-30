@@ -26,7 +26,7 @@ export interface PersistedAgent {
   /** Per-agent label (see agentCreated.label). */
   label?: string;
   /** 'lead' for a project's lead. */
-  projectRole?: 'lead';
+  projectRole?: 'lead' | 'secretary';
   teamName?: string;
   agentName?: string;
   isTeamLead?: boolean;

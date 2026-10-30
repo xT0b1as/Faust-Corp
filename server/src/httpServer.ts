@@ -22,7 +22,8 @@ import {
   WS_CLOSE_FORBIDDEN_ORIGIN,
   WS_CLOSE_UNAUTHORIZED,
 } from './constants.js';
-import { registerMcpRoute, setMcpEndpoint } from './projects/mcpRoute.js';
+import { setMcpEndpoint } from './projects/mcpEndpoint.js';
+import { registerMcpRoute } from './projects/mcpRoute.js';
 import { claudeProvider } from './providers/index.js';
 import type { PtySessionManager } from './terminal/ptySessionManager.js';
 import { registerTerminalRoutes } from './terminal/terminalRoutes.js';

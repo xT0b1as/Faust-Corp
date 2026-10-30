@@ -93,7 +93,7 @@ function projectAgents(store: AgentStateStore, lead: AgentState): Array<[number,
   );
 }
 
-function statusOf(agent: AgentState): string {
+export function statusOf(agent: AgentState): string {
   if (agent.permissionSent) return 'wartet auf Freigabe';
   if (agent.isWaiting) return 'fertig';
   if (agent.activeToolIds.size > 0) return 'arbeitet';
