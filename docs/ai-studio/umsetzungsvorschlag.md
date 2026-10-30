@@ -46,7 +46,42 @@ Drei Schichten, klar getrennt, damit die Büro Oberfläche später austauschbar 
 - AI Studio ist die Organisations und Koordinationsschicht. Die Wahrheit über Mitarbeiter und Aufgaben liegt dort, als einfache Dateien in einem Git Repo.
 - Die Verbindung zwischen beiden läuft nur über Dinge, die Pixel Agents schon öffentlich anbietet: Directories, Area mappings, Adopt und das `/ws` Protokoll.
 
-## 3. Mitarbeiter getrennt von Sessions
+## 3. Betrieb im Browser und am Handy über Tailscale
+
+Festlegung: AI Studio läuft komplett im Browser und ist vom Handy über Tailscale erreichbar. Das passt sehr gut zu Pixel Agents, denn der Standalone Modus ist genau dafür gebaut:
+
+- `npx pixel-agents` startet einen lokalen Server, der das Büro als Web App ausliefert.
+- Unterhalb einer bestimmten Breite schaltet die Oberfläche auf die Mobile Shell um: Büro und Terminal als zwei Seiten zum Wischen, Agentenkarten unten, eine Tastenleiste über der Bildschirmtastatur (esc, shift+tab, Einfügen). Die App lässt sich als PWA auf den Homescreen legen.
+- Das eingebaute Terminal zeigt jede Session im Browser. Du kannst also auch am Handy direkt mit dem Sekretär schreiben.
+- Für Tailscale gibt es die Option `--allowed-host` (Hinweistext im CLI nennt ausdrücklich Tailscale Serve).
+
+Empfohlene Einrichtung auf dem Rechner, auf dem die Agenten laufen:
+
+```bash
+# Büro nur lokal binden, fester Port
+npx pixel-agents --port 3100 --allowed-host <rechner>.<tailnet>.ts.net
+
+# Tailscale Serve reicht HTTPS im Tailnet an den lokalen Port weiter
+tailscale serve --bg 3100
+```
+
+Am Handy dann `https://<rechner>.<tailnet>.ts.net/?token=...` öffnen. Den Token druckt Pixel Agents beim Start in der lokalen URL aus.
+
+Wichtig dabei:
+
+- Nicht `--host 0.0.0.0` verwenden. Damit wäre der Port im ganzen lokalen Netz offen. Mit `127.0.0.1` plus Tailscale Serve ist das Büro nur in deinem Tailnet erreichbar und der Verkehr verschlüsselt.
+- Die URL mit Token ist ein Schlüssel: Wer sie hat, kann Shells starten. Nicht teilen. Falls sie doch nach außen gelangt, `--rotate-token` macht alle alten Links ungültig.
+- Ohne Token oder unter einem nicht erlaubten Host öffnet sich das Büro nur lesend. Das ist praktisch für ein zweites Gerät, das nur zuschauen soll.
+- Der Rechner muss laufen. Für dauerhaften Betrieb eignet sich ein kleiner Server, ein Mini PC oder ein VPS mit Tailscale; Pixel Agents nennt ausdrücklich auch Raspberry Pi und VPS als Host.
+
+Folgen für die eigene Entwicklung:
+
+- Alles, was AI Studio selbst an Oberfläche bekommt (Aufgaben, Digest, Freigaben), wird eine Web Seite, mobil zuerst gedacht. Keine Desktop App, keine VS Code Erweiterung.
+- Der spätere `studio-daemon` liefert diese Seite selbst aus, ebenfalls nur auf `127.0.0.1`, und bekommt über `tailscale serve` einen eigenen Pfad, z. B. `/studio`. Pixel Agents bleibt unter `/`.
+- Freigaben sollen am Handy mit einem Tipp gehen: Liste der Aufgaben mit `freigabe: noetig`, je ein Knopf für Freigeben und Ablehnen.
+- Benachrichtigungen aufs Handy (z. B. "Digest bereit") kommen später über Web Push der PWA oder einen einfachen Dienst wie ntfy, nicht als Einzelmeldung pro Agent.
+
+## 4. Mitarbeiter getrennt von Sessions
 
 Ein Mitarbeiter ist ein Ordner. Eine Session ist nur ein Arbeitstag dieses Mitarbeiters.
 
@@ -82,7 +117,7 @@ Warum das trägt:
 
 Projekte sind keine eigenen Firmen. Ein Mitarbeiter arbeitet projektübergreifend, die Aufgabe nennt das Projekt und dessen Repo Pfad. Engineering erhält über `--add-dir` Zugriff auf das jeweilige Projekt Repo.
 
-## 4. Zentrale Aufgabenverwaltung
+## 5. Zentrale Aufgabenverwaltung
 
 Eine Aufgabe ist eine Markdown Datei mit Kopf:
 
@@ -99,7 +134,7 @@ ergebnis: tasks/review/2026-10-30-001-konkurrenz.md
 
 Der Status ergibt sich aus dem Ordner, in dem die Datei liegt. Das ist für Menschen und Agenten gleich gut lesbar, versionierbar und braucht keinen Server. Wenn die Datenmenge wächst, kann dieselbe Struktur später in SQLite wandern, ohne dass sich die Rollen ändern.
 
-## 5. Wie der Sekretär koordiniert
+## 6. Wie der Sekretär koordiniert
 
 Der Sekretär ist selbst ein Mitarbeiter (eigener Ordner, eigene Figur) mit genau drei Aufgaben:
 
@@ -121,7 +156,7 @@ Stufe B (kleiner Dienst `studio-daemon`, TypeScript):
 
 Hinweis zum SDK: Eigene SDK Anwendungen laufen mit eigener Authentifizierung und Abrechnung über die API, nicht automatisch über ein Claude Abonnement. Für den MVP reicht die Claude Code CLI.
 
-## 6. Was wir selbst entwickeln müssen
+## 7. Was wir selbst entwickeln müssen
 
 | Komponente                                                                                 | Aufwand              | Wann         |
 | ------------------------------------------------------------------------------------------ | -------------------- | ------------ |
@@ -130,16 +165,17 @@ Hinweis zum SDK: Eigene SDK Anwendungen laufen mit eigener Authentifizierung und
 | Regeln für Gedächtnis und Journal in jeder Rolle                                           | klein                | MVP          |
 | Sekretär Rolle mit Annahme, Verteilung, Digest                                             | mittel               | MVP          |
 | `studio-daemon` (WebSocket Beobachter, Aufgaben Watcher, Starter)                          | mittel               | nach dem MVP |
-| Eigene Ansicht für Aufgaben und Digest (eigene kleine Web UI)                              | mittel               | später       |
+| Eigene Ansicht für Aufgaben, Digest und Freigaben (mobile Web UI hinter Tailscale)         | mittel               | später       |
 | Änderungen an Pixel Agents selbst (z. B. Auftrag beim Launch, Schreibtisch mit Dokumenten) | groß, nur wenn nötig | spät         |
 
 Wenn wir Pixel Agents später doch erweitern, wäre der sauberste erste Schritt ein optionales Feld `prompt` an `launchAgent` im AsyncAPI Vertrag. Das passt zum bestehenden Muster und ist auch für das Originalprojekt interessant.
 
-## 7. Roadmap zum nutzbaren MVP
+## 8. Roadmap zum nutzbaren MVP
 
 Woche 1: Beobachten
 
-- Pixel Agents standalone starten (`npx pixel-agents`), Hooks erlauben.
+- Pixel Agents standalone starten (`npx pixel-agents --port 3100 --allowed-host ...`), Hooks erlauben.
+- Tailscale Serve einrichten und das Büro am Handy öffnen, als PWA auf den Homescreen legen.
 - Zwei bis drei normale Claude Code Sessions laufen lassen und schauen, wie es sich anfühlt.
 
 Woche 2: Firma anlegen
@@ -162,7 +198,7 @@ Woche 4 und folgende: Ausbau nach Bedarf
 
 Abnahmekriterium für den MVP: Du kannst eine Aufgabe nur über den Sekretär vergeben, siehst den zuständigen Mitarbeiter im Büro arbeiten, und das Ergebnis liegt danach gesammelt für dich bereit, ohne dass du zwischendurch eingreifen musstest.
 
-## 8. Offene Entscheidung
+## 9. Offene Entscheidung
 
 Wie viel darf der Sekretär allein entscheiden? Vorschlag als Startpunkt:
 
