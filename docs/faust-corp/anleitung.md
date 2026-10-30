@@ -46,6 +46,27 @@ Ohne Tailscale auf einem Rechner geht ein SSH Tunnel: `ssh -N -L 3101:127.0.0.1:
 
 Der Hub braucht Node.js 22 oder neuer, aber kein Claude. Figuren zeigen ihren Rechner (`@pc`, `@laptop`), Ordner tragen ein Abzeichen, beim Anlegen wählst du den Rechner aus. Ist ein Rechner aus, verschwinden seine Figuren und kommen beim Wiederverbinden zurück.
 
+## Dauerbetrieb
+
+Die Chats eines Rechners hängen an seinem Server: Startet der Server neu, enden sie. Ihr Wissen bleibt in `.faust/`, also startest du danach einfach Wagner wieder. Damit der Server mit dem Rechner startet und nach einem Absturz neu anläuft, liegen Vorlagen in `scripts/faust-corp/`:
+
+- Linux und Raspberry Pi: `faust-corp.service` (Knoten) und `faust-corp-hub.service` (Hub), als systemd Dienst des Benutzers. Die Einrichtung steht oben in den Dateien.
+- macOS: `de.faustcorp.node.plist` für launchd.
+- Windows: `install-windows-task.ps1` legt eine geplante Aufgabe an, die beim Anmelden startet.
+
+In allen Vorlagen `CHANGE-ME` durch deinen Rechnernamen bzw. Benutzer ersetzen.
+
+### Raspberry Pi als Hub
+
+1. Raspberry Pi OS (64 Bit) und Tailscale installieren, `sudo tailscale up`.
+2. Node.js 22 installieren, zum Beispiel über nvm: `curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash`, dann `nvm install 22`.
+3. Repo klonen, `npm install`, `npm run build`.
+4. `~/.pixel-agents/nodes.txt` mit einer Zeile pro Rechner anlegen (`pc=https://pc.<tailnet>.ts.net/?token=...`), dann `chmod 600 ~/.pixel-agents/nodes.txt`.
+5. `faust-corp-hub.service` einrichten und `tailscale serve --bg 3200` ausführen.
+6. Am Handy `https://<pi>.<tailnet>.ts.net/?token=...` öffnen. Den Token zeigt `journalctl --user -u faust-corp-hub` beim Start.
+
+Claude muss auf dem Pi nicht installiert sein.
+
 ## Im Büro
 
 Alles Folgende findest du unter "+ Agent":

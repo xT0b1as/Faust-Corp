@@ -1,0 +1,20 @@
+# systemd user service: the Faust Corp hub (one office over several machines).
+# Meant for the Raspberry Pi (or any always-on machine). Needs Node.js 22+,
+# no Claude. Put the nodes into ~/.pixel-agents/nodes.txt, one per line:
+#   pc=https://pc.tailnet.ts.net/?token=...
+#   laptop=https://laptop.tailnet.ts.net/?token=...
+# then chmod 600 ~/.pixel-agents/nodes.txt and install like faust-corp.service.
+# Publish it in the tailnet once: tailscale serve --bg 3200
+
+[Unit]
+Description=Faust Corp hub
+After=network-online.target
+
+[Service]
+WorkingDirectory=%h
+ExecStart=/usr/bin/env node %h/Faust-Corp/dist/cli.js hub --port 3200 --nodes-file %h/.pixel-agents/nodes.txt --allowed-host CHANGE-ME.tailnet.ts.net
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
