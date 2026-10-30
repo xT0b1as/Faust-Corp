@@ -46,6 +46,8 @@ export type ServerMessage =
   | ProjectLeadRejected
   | AgentCommandRejected
   | HubNodes
+  | TasksLoaded
+  | UsageReport
   | TerminalAvailability
   | TerminalSessionOpened
   | TerminalSessionClosed
@@ -82,6 +84,9 @@ export type ClientMessage =
   | AgentCommand
   | StartSecretary
   | MessageProjectLead
+  | RequestTasks
+  | SetTaskApproval
+  | RequestUsage
   | RequestDiagnostics;
 
 export interface ProviderCapabilities {
@@ -388,6 +393,36 @@ export interface HubNode {
   connected: boolean;
 }
 
+export interface TasksLoaded {
+  type: 'tasksLoaded';
+  tasks: TaskSummary[];
+}
+
+export interface TaskSummary {
+  directoryPath: string;
+  project: string;
+  file: string;
+  title: string;
+  status: string;
+  assignee?: string;
+  approval?: string;
+  node?: string;
+}
+
+export interface UsageReport {
+  type: 'usageReport';
+  accounts: AccountUsage[];
+}
+
+export interface AccountUsage {
+  account: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  sessions: number;
+  node?: string;
+}
+
 export interface TerminalAvailability {
   type: 'terminalAvailability';
   available: boolean;
@@ -573,6 +608,21 @@ export interface MessageProjectLead {
   type: 'messageProjectLead';
   directoryPath: string;
   text: string;
+}
+
+export interface RequestTasks {
+  type: 'requestTasks';
+}
+
+export interface SetTaskApproval {
+  type: 'setTaskApproval';
+  directoryPath: string;
+  file: string;
+  approved: boolean;
+}
+
+export interface RequestUsage {
+  type: 'requestUsage';
 }
 
 export interface RequestDiagnostics {

@@ -94,7 +94,7 @@ export function WalkControls({ getOfficeState, layoutReady, onTalk }: WalkContro
       : null;
 
   return (
-    <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-4">
+    <div className="flex gap-4">
       <Button
         size="sm"
         variant={walking ? 'active' : 'default'}

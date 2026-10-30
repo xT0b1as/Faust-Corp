@@ -24,6 +24,8 @@ import { readLayoutFromFile, writeLayoutToFile } from './layoutPersistence.js';
 import { type AgentCommand, runAgentCommand } from './projects/agentCommands.js';
 import { startProjectLead } from './projects/projectLead.js';
 import { messageProjectLead, secretaryDir, startSecretary } from './projects/secretary.js';
+import { listTasks, setTaskApproval } from './projects/tasks.js';
+import { usageReport } from './projects/usage.js';
 import type { ConsentEffects } from './providers/hook/consentExecutor.js';
 import { applyConsentChoice } from './providers/hook/consentExecutor.js';
 import { hooksConsentRequest } from './providers/hook/consentGate.js';
@@ -404,6 +406,42 @@ export function handleClientMessage(
       } else if (!result.launched) {
         send({ type: 'agentSelected', id: result.agentId });
       }
+      break;
+    }
+
+    case 'requestUsage':
+      send({ type: 'usageReport', accounts: usageReport(hostDirectoriesFor(ctx)) });
+      break;
+
+    case 'requestTasks':
+      send({ type: 'tasksLoaded', tasks: listTasks(hostDirectoriesFor(ctx)) });
+      break;
+
+    case 'setTaskApproval': {
+      const approved = msg.approved === true;
+      const result = setTaskApproval(
+        hostDirectoriesFor(ctx),
+        String(msg.directoryPath ?? ''),
+        String(msg.file ?? ''),
+        approved,
+      );
+      if (!result.ok) {
+        console.warn(`[Pixel Agents] setTaskApproval: ${result.reason}`);
+      } else if (runtime && ctx.ptyManager) {
+        messageProjectLead(
+          {
+            store,
+            runtime,
+            ptyManager: ctx.ptyManager,
+            provider: claudeProvider,
+            hostDirectories: hostDirectoriesFor(ctx),
+            bypassPermissions: adapter?.getSetting(KEY_BYPASS_PERMISSIONS, false) ?? false,
+          },
+          String(msg.directoryPath),
+          `Der Nutzer hat die Freigabe für die Aufgabe "${result.title}" (${String(msg.file)}) ${approved ? 'erteilt' : 'abgelehnt'}.`,
+        );
+      }
+      send({ type: 'tasksLoaded', tasks: listTasks(hostDirectoriesFor(ctx)) });
       break;
     }
 

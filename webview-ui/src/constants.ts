@@ -579,3 +579,5 @@ export const PLAYER_PALETTE = 5;
 export const PLAYER_TALK_RANGE_TILES = 2;
 /** How often the walk controls check for an agent within talking range. */
 export const PLAYER_NEAR_POLL_MS = 250;
+/** How often the open overview refreshes the task list (4x slower in the background, for the badge). */
+export const OVERVIEW_REFRESH_MS = 10_000;

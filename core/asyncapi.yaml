@@ -125,6 +125,8 @@ components:
         - $ref: '#/components/schemas/ProjectLeadRejected'
         - $ref: '#/components/schemas/AgentCommandRejected'
         - $ref: '#/components/schemas/HubNodes'
+        - $ref: '#/components/schemas/TasksLoaded'
+        - $ref: '#/components/schemas/UsageReport'
         # Terminal (standalone embedded terminal control plane)
         - $ref: '#/components/schemas/TerminalAvailability'
         - $ref: '#/components/schemas/TerminalSessionOpened'
@@ -166,6 +168,9 @@ components:
         - $ref: '#/components/schemas/AgentCommand'
         - $ref: '#/components/schemas/StartSecretary'
         - $ref: '#/components/schemas/MessageProjectLead'
+        - $ref: '#/components/schemas/RequestTasks'
+        - $ref: '#/components/schemas/SetTaskApproval'
+        - $ref: '#/components/schemas/RequestUsage'
         - $ref: '#/components/schemas/RequestDiagnostics'
       discriminator: type
 
@@ -901,6 +906,79 @@ components:
           type: string
           description: Human-readable cause.
 
+    TasksLoaded:
+      description: Every task of every project (`.faust/aufgaben/`), answer to `requestTasks`.
+      type: object
+      additionalProperties: false
+      required: [type, tasks]
+      properties:
+        type:
+          const: tasksLoaded
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskSummary'
+
+    UsageReport:
+      description: Today's token use per Claude account; answer to `requestUsage`.
+      type: object
+      additionalProperties: false
+      required: [type, accounts]
+      properties:
+        type:
+          const: usageReport
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountUsage'
+
+    AccountUsage:
+      description: One account's tokens today, summed from its transcripts.
+      type: object
+      additionalProperties: false
+      required: [account, inputTokens, outputTokens, cacheReadTokens, sessions]
+      properties:
+        account:
+          type: string
+          description: The account's config directory.
+        inputTokens:
+          type: integer
+          description: Input plus cache-creation tokens.
+        outputTokens:
+          type: integer
+        cacheReadTokens:
+          type: integer
+        sessions:
+          type: integer
+        node:
+          type: string
+          description: Hub mode only.
+
+    TaskSummary:
+      description: One task file, as the office lists it.
+      type: object
+      additionalProperties: false
+      required: [directoryPath, project, file, title, status]
+      properties:
+        directoryPath:
+          type: string
+        project:
+          type: string
+        file:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+        assignee:
+          type: string
+        approval:
+          type: string
+          description: noetig, erteilt, abgelehnt or nicht_noetig.
+        node:
+          type: string
+          description: Hub mode only.
+
     HubNodes:
       description: |
         Hub mode only. The machines (nodes) this office aggregates and whether
@@ -1441,6 +1519,42 @@ components:
         hubMcpToken:
           type: string
           description: Bearer token for `hubMcpUrl`.
+
+    RequestTasks:
+      description: Ask for every project's tasks; answered with `tasksLoaded`.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: requestTasks
+
+    RequestUsage:
+      description: Ask for today's token use per account; answered with `usageReport`.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: requestUsage
+
+    SetTaskApproval:
+      description: |
+        The user's decision on a task that needs approval. Written into the
+        task's header (`freigabe: erteilt|abgelehnt`) and passed to the
+        project's lead; answered with a fresh `tasksLoaded`.
+      type: object
+      additionalProperties: false
+      required: [type, directoryPath, file, approved]
+      properties:
+        type:
+          const: setTaskApproval
+        directoryPath:
+          type: string
+        file:
+          type: string
+        approved:
+          type: boolean
 
     MessageProjectLead:
       description: |

@@ -76,6 +76,8 @@ interface NodeState {
   directories: DirectoryLike[];
   suggestions: string[];
   terminalAvailable: boolean;
+  tasks: Array<Record<string, unknown>>;
+  usage: Array<Record<string, unknown>>;
   retryMs: number;
   retryTimer: ReturnType<typeof setTimeout> | null;
 }
@@ -105,6 +107,8 @@ export class HubSession {
       directories: [],
       suggestions: [],
       terminalAvailable: false,
+      tasks: [],
+      usage: [],
       retryMs: RECONNECT_MIN_MS,
       retryTimer: null,
     }));
@@ -163,6 +167,7 @@ export class HubSession {
       for (const id of node.agents) this.options.send({ type: 'agentClosed', id });
       node.agents.clear();
       node.directories = [];
+      node.tasks = [];
       node.terminalAvailable = false;
       if (wasConnected) {
         this.emitDirectories();
@@ -222,6 +227,23 @@ export class HubSession {
       case 'existingAgents':
         this.options.send(this.remapExisting(index, message));
         return;
+      case 'usageReport':
+        node.usage = ((message.accounts as Array<Record<string, unknown>>) ?? []).map((a) => ({
+          ...a,
+          node: node.config.name,
+        }));
+        this.options.send({ type: 'usageReport', accounts: this.nodes.flatMap((n) => n.usage) });
+        return;
+      case 'tasksLoaded': {
+        const name = node.config.name;
+        node.tasks = ((message.tasks as Array<Record<string, unknown>>) ?? []).map((t) => ({
+          ...t,
+          directoryPath: encodeNodePath(name, String(t.directoryPath)),
+          node: name,
+        }));
+        this.options.send({ type: 'tasksLoaded', tasks: this.nodes.flatMap((n) => n.tasks) });
+        return;
+      }
       default:
         break;
     }
@@ -325,7 +347,12 @@ export class HubSession {
       case 'launchAgent':
       case 'startProjectLead':
       case 'messageProjectLead':
+      case 'setTaskApproval':
         return byPath('directoryPath');
+      case 'requestTasks':
+      case 'requestUsage':
+        this.nodes.forEach((_, i) => this.sendToNode(i, message));
+        return true;
       case 'removeDirectory':
         return byPath('path');
       case 'saveDirectory': {

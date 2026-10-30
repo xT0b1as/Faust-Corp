@@ -14,6 +14,7 @@ import { IntroBubble } from './components/IntroBubble.js';
 import { MigrationNotice } from './components/MigrationNotice.js';
 import type { LaunchTask } from './components/NewChatModal.js';
 import { NewChatModal } from './components/NewChatModal.js';
+import { OverviewPanel } from './components/OverviewPanel.js';
 import { SettingsModal } from './components/SettingsModal.js';
 import { TerminalDrawer } from './components/TerminalDrawer.js';
 import { Tooltip } from './components/Tooltip.js';
@@ -102,6 +103,8 @@ function App() {
     directorySaved,
     directorySuggestions,
     hubNodes,
+    tasks,
+    usage,
     agentDirectoryNames,
     externalAssetDirectories,
     lastSeenVersion,
@@ -601,11 +604,14 @@ function App() {
           {!isMobile && <ZoomControls zoom={editor.zoom} onZoomChange={editor.handleZoomChange} />}
 
           {!editor.isEditMode && (
-            <WalkControls
-              getOfficeState={getOfficeState}
-              layoutReady={layoutReady}
-              onTalk={handleTalk}
-            />
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-4">
+              <WalkControls
+                getOfficeState={getOfficeState}
+                layoutReady={layoutReady}
+                onTalk={handleTalk}
+              />
+              {!officeReadOnly && <OverviewPanel tasks={tasks} usage={usage} />}
+            </div>
           )}
 
           {/* Vignette overlay */}

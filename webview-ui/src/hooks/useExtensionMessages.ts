@@ -75,6 +75,28 @@ export interface Directory {
   node?: string;
 }
 
+/** One task file of a project (`.faust/aufgaben/`). */
+export interface TaskSummary {
+  directoryPath: string;
+  project: string;
+  file: string;
+  title: string;
+  status: string;
+  assignee?: string;
+  approval?: string;
+  node?: string;
+}
+
+/** Today's token use of one Claude account. */
+export interface AccountUsage {
+  account: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  sessions: number;
+  node?: string;
+}
+
 /** Hub mode: one aggregated machine. */
 export interface HubNode {
   name: string;
@@ -123,6 +145,8 @@ interface ExtensionMessageState {
   directorySuggestions: string[];
   /** Hub mode only; empty for a normal office. */
   hubNodes: HubNode[];
+  tasks: TaskSummary[];
+  usage: AccountUsage[];
   /** Distinct directoryNames seen across agents this session — source for the Areas Directory dropdown. */
   agentDirectoryNames: string[];
   externalAssetDirectories: string[];
@@ -211,6 +235,8 @@ export function useExtensionMessages(
   const [directorySaved, setDirectorySaved] = useState<DirectorySaved | null>(null);
   const [directorySuggestions, setDirectorySuggestions] = useState<string[]>([]);
   const [hubNodes, setHubNodes] = useState<HubNode[]>([]);
+  const [tasks, setTasks] = useState<TaskSummary[]>([]);
+  const [usage, setUsage] = useState<AccountUsage[]>([]);
   const [agentDirectoryNames, setAgentDirectoryNames] = useState<string[]>([]);
   const [externalAssetDirectories, setExternalAssetDirectories] = useState<string[]>([]);
   const [lastSeenVersion, setLastSeenVersion] = useState('');
@@ -755,6 +781,10 @@ export function useExtensionMessages(
         setDirectories(directories);
       } else if (msg.type === 'directorySuggestions') {
         setDirectorySuggestions((msg.paths ?? []) as string[]);
+      } else if (msg.type === 'tasksLoaded') {
+        setTasks((msg.tasks ?? []) as TaskSummary[]);
+      } else if (msg.type === 'usageReport') {
+        setUsage((msg.accounts ?? []) as AccountUsage[]);
       } else if (msg.type === 'hubNodes') {
         setHubNodes((msg.nodes ?? []) as HubNode[]);
       } else if (msg.type === 'directorySaved') {
@@ -916,6 +946,8 @@ export function useExtensionMessages(
     directorySaved,
     directorySuggestions,
     hubNodes,
+    tasks,
+    usage,
     agentDirectoryNames,
     externalAssetDirectories,
     lastSeenVersion,
