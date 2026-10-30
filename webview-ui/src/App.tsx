@@ -6,6 +6,8 @@ import { BottomToolbar } from './components/BottomToolbar.js';
 import { ChangelogModal } from './components/ChangelogModal.js';
 import { ConnectionIndicator } from './components/ConnectionIndicator.js';
 import { DebugView } from './components/DebugView.js';
+import type { DepartmentValues } from './components/DepartmentModal.js';
+import { DepartmentModal } from './components/DepartmentModal.js';
 import { DirectoryModal } from './components/DirectoryModal.js';
 import { EditActionBar } from './components/EditActionBar.js';
 import { IntroBubble } from './components/IntroBubble.js';
@@ -19,7 +21,7 @@ import { Button } from './components/ui/Button.js';
 import { Modal } from './components/ui/Modal.js';
 import { VersionIndicator } from './components/VersionIndicator.js';
 import { ZoomControls } from './components/ZoomControls.js';
-import { OFFICE_CANVAS_TEST_ID } from './constants.js';
+import { AREA_DEFAULT_COLORS, OFFICE_CANVAS_TEST_ID } from './constants.js';
 import { useDirectoryEditor } from './hooks/useDirectoryEditor.js';
 import { useEditorActions } from './hooks/useEditorActions.js';
 import { useEditorKeyboard } from './hooks/useEditorKeyboard.js';
@@ -36,6 +38,7 @@ import { ToolOverlay } from './office/components/ToolOverlay.js';
 import { EditorState } from './office/editor/editorState.js';
 import { EditorToolbar } from './office/editor/EditorToolbar.js';
 import { OfficeState } from './office/engine/officeState.js';
+import { addDepartmentRoom } from './office/layout/departmentRoom.js';
 import { exportLayoutToFile } from './office/layout/exportLayout.js';
 import { isRotatable } from './office/layout/furnitureCatalog.js';
 import { migrateLayoutColors } from './office/layout/layoutSerializer.js';
@@ -282,6 +285,59 @@ function App() {
     },
     [areaMappings, setAreaMappings],
   );
+
+  // "Abteilung gründen": save the Directory first; only once the host has
+  // accepted it (directorySaved, carrying the stored name) is the room built,
+  // the Area mapped and the lead started -- a refused path leaves no room behind.
+  const [departmentModal, setDepartmentModal] = useState<{
+    open: boolean;
+    error: string | null;
+    pending: string | null;
+  }>({ open: false, error: null, pending: null });
+  const openDepartmentModal = useCallback(
+    () => setDepartmentModal({ open: true, error: null, pending: null }),
+    [],
+  );
+  const submitDepartment = useCallback((values: DepartmentValues) => {
+    setDepartmentModal({ open: true, error: null, pending: values.name });
+    transport.send({
+      type: 'saveDirectory',
+      name: values.name,
+      path: values.path,
+      account: values.account,
+    });
+  }, []);
+  useEffect(() => {
+    const pending = departmentModal.pending;
+    if (pending === null || directorySaved === null) return;
+    const directory = directorySaved.directory;
+    if (directory.name !== pending) return;
+    const os = getOfficeState();
+    const color =
+      AREA_DEFAULT_COLORS[(os.getLayout().areas ?? []).length % AREA_DEFAULT_COLORS.length];
+    const room = addDepartmentRoom(os.getLayout(), directory.name, color);
+    if (!room.ok) {
+      setDepartmentModal({ open: true, error: room.reason, pending: null });
+      return;
+    }
+    os.rebuildFromLayout(room.layout);
+    transport.send({
+      type: 'saveLayout',
+      layout: room.layout as unknown as Record<string, unknown>,
+    });
+    handleAreaMappingChange(directory.name, directory.name, 'add');
+    startProjectLead(directory);
+    setDepartmentModal({ open: false, error: null, pending: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [directorySaved]);
+  useEffect(() => {
+    if (directoryRejection === null) return;
+    setDepartmentModal((prev) =>
+      prev.pending === null
+        ? prev
+        : { open: true, error: directoryRejection.reason, pending: null },
+    );
+  }, [directoryRejection]);
 
   // Toggle global Show Areas — persisted via setShowAreas message; runs server-
   // side through configPersistence.
@@ -673,6 +729,7 @@ function App() {
           onLaunchWithTask={setNewChatDirectory}
           onStartLead={startProjectLead}
           onStartSecretary={startSecretary}
+          onFoundDepartment={openDepartmentModal}
           terminalAvailable={terminalAvailable}
           terminalUnavailableReason={terminalUnavailableReason}
         />
@@ -753,6 +810,7 @@ function App() {
           onLaunchWithTask={setNewChatDirectory}
           onStartLead={startProjectLead}
           onStartSecretary={startSecretary}
+          onFoundDepartment={openDepartmentModal}
           onCloseAgent={handleCloseAgent}
           keyboardOpen={keyboard.keyboardOpen}
         />
@@ -835,6 +893,13 @@ function App() {
       {/* Rendered at the composition root, not inside a launch surface: the
           drawer that opens it lives in BottomToolbar on desktop and
           MobileAgentBar on mobile, and both close as soon as it appears. */}
+      <DepartmentModal
+        isOpen={departmentModal.open}
+        error={departmentModal.error}
+        pending={departmentModal.pending !== null}
+        onSubmit={submitDepartment}
+        onClose={() => setDepartmentModal({ open: false, error: null, pending: null })}
+      />
       <NewChatModal
         directory={newChatDirectory}
         onSubmit={(directory, task) => {

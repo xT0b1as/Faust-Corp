@@ -22,6 +22,8 @@ interface LaunchDrawerProps {
   onStartLead: (directory: Directory) => void;
   /** Bring up the office's secretary (the pinned first row). */
   onStartSecretary: () => void;
+  /** Open the found-a-department modal (pinned row). */
+  onFoundDepartment: () => void;
   className?: string;
 }
 
@@ -53,6 +55,7 @@ export function LaunchDrawer({
   onLaunchWithTask,
   onStartLead,
   onStartSecretary,
+  onFoundDepartment,
   className = '',
 }: LaunchDrawerProps) {
   return (
@@ -68,6 +71,9 @@ export function LaunchDrawer({
         <div className="shrink-0 border-b-2 border-border">
           <DropdownItem onClick={onStartSecretary} className="text-base text-accent-bright">
             Sekretär Lynkeus
+          </DropdownItem>
+          <DropdownItem onClick={onFoundDepartment} className="text-base text-accent-bright">
+            + Abteilung
           </DropdownItem>
           <DropdownItem onClick={onAddDirectory} className="text-base text-accent-bright">
             + Directory

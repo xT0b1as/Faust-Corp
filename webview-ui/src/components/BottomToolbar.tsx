@@ -19,6 +19,7 @@ interface BottomToolbarProps {
   onLaunchWithTask: (directory: Directory) => void;
   onStartLead: (directory: Directory) => void;
   onStartSecretary: () => void;
+  onFoundDepartment: () => void;
   /** Standalone: server has a working PTY, so agents can be launched here. */
   terminalAvailable: boolean;
   /** Why the terminal is off (shown on the disabled button's tooltip). */
@@ -36,6 +37,7 @@ export function BottomToolbar({
   onLaunchWithTask,
   onStartLead,
   onStartSecretary,
+  onFoundDepartment,
   terminalAvailable,
   terminalUnavailableReason,
 }: BottomToolbarProps) {
@@ -125,6 +127,10 @@ export function BottomToolbar({
             onStartSecretary={() => {
               setIsDrawerOpen(false);
               onStartSecretary();
+            }}
+            onFoundDepartment={() => {
+              setIsDrawerOpen(false);
+              onFoundDepartment();
             }}
           />
         </div>

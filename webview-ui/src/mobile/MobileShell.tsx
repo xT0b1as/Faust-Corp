@@ -31,6 +31,7 @@ interface MobileShellProps {
   onLaunchWithTask: (directory: Directory) => void;
   onStartLead: (directory: Directory) => void;
   onStartSecretary: () => void;
+  onFoundDepartment: () => void;
   onCloseAgent: (agentId: number) => void;
   /** The software keyboard is up (useKeyboardViewport). */
   keyboardOpen: boolean;
@@ -58,6 +59,7 @@ export function MobileShell({
   onLaunchWithTask,
   onStartLead,
   onStartSecretary,
+  onFoundDepartment,
   onCloseAgent,
   keyboardOpen,
 }: MobileShellProps) {
@@ -139,6 +141,7 @@ export function MobileShell({
         onLaunchWithTask={onLaunchWithTask}
         onStartLead={onStartLead}
         onStartSecretary={onStartSecretary}
+        onFoundDepartment={onFoundDepartment}
         canLaunch={terminalAvailable}
         launchUnavailableReason={terminalUnavailableReason}
         getAppearance={drawer.getAppearance}

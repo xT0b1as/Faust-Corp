@@ -560,3 +560,11 @@ export const VISUAL_VIEWPORT_FULL_EPSILON_PX = 1;
  *  (with an editable focused) = the software keyboard is up. Well above an
  *  address bar collapsing (~56 px), well below any on-screen keyboard. */
 export const KEYBOARD_MIN_HEIGHT_PX = 150;
+
+// ── Faust Corp: department rooms ─────────────────────────────
+/** Width of a new department's room in tiles, both walls included. */
+export const DEPARTMENT_ROOM_WIDTH = 10;
+/** Minimum height of a department room in tiles, both walls included. */
+export const DEPARTMENT_ROOM_MIN_HEIGHT = 9;
+/** Desks (with PC and seat) placed in a new department room. */
+export const DEPARTMENT_ROOM_DESKS = 2;
