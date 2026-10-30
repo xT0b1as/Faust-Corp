@@ -15,6 +15,10 @@ import { LAYOUT_FILE_DIR } from '../constants.js';
 
 export const MCP_PATH_PREFIX = '/mcp/agent';
 export const MCP_SERVER_NAME = 'faust';
+/** The hub's own MCP server, loaded by the secretary in a hub office. */
+export const MCP_HUB_SERVER_NAME = 'faust-hub';
+/** Path of the hub's MCP endpoint. */
+export const MCP_HUB_PATH = '/mcp/hub';
 const MCP_CONFIG_FOLDER = 'mcp';
 
 let endpoint: { port: number; token: string } | null = null;
@@ -32,7 +36,10 @@ export function mcpConfigDir(): string {
  * undefined before the server listens or when the file can't be written (the
  * agent then starts without its tools rather than not at all).
  */
-export function mcpConfigForAgent(agentId: number): string | undefined {
+export function mcpConfigForAgent(
+  agentId: number,
+  hub?: { url: string; token: string },
+): string | undefined {
   if (!endpoint) return undefined;
   const config = JSON.stringify({
     mcpServers: {
@@ -41,6 +48,15 @@ export function mcpConfigForAgent(agentId: number): string | undefined {
         url: `http://127.0.0.1:${endpoint.port}${MCP_PATH_PREFIX}/${agentId}`,
         headers: { Authorization: `Bearer ${endpoint.token}` },
       },
+      ...(hub
+        ? {
+            [MCP_HUB_SERVER_NAME]: {
+              type: 'http',
+              url: hub.url,
+              headers: { Authorization: `Bearer ${hub.token}` },
+            },
+          }
+        : {}),
     },
   });
   const file = path.join(mcpConfigDir(), `agent-${agentId}.json`);

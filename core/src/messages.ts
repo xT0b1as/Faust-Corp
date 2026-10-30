@@ -81,6 +81,7 @@ export type ClientMessage =
   | StartProjectLead
   | AgentCommand
   | StartSecretary
+  | MessageProjectLead
   | RequestDiagnostics;
 
 export interface ProviderCapabilities {
@@ -564,6 +565,14 @@ export type AgentCommandKind = 'compact' | 'restartWithHandover';
 
 export interface StartSecretary {
   type: 'startSecretary';
+  hubMcpUrl?: string;
+  hubMcpToken?: string;
+}
+
+export interface MessageProjectLead {
+  type: 'messageProjectLead';
+  directoryPath: string;
+  text: string;
 }
 
 export interface RequestDiagnostics {

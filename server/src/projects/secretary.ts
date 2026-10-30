@@ -10,12 +10,12 @@ import * as os from 'os';
 import * as path from 'path';
 
 import { LAYOUT_FILE_DIR, SECRETARY_LEAD_BOOT_MS } from '../constants.js';
-import { listDirectories } from '../directories.js';
+import { listDirectories, normalizeDirectoryPath } from '../directories.js';
 import { launchStandaloneAgent } from '../terminal/standaloneAgentLauncher.js';
 import { submitToTerminal } from './agentCommands.js';
 import type { LeadToolDeps, McpTool, ToolResult } from './leadTools.js';
 import { statusOf } from './leadTools.js';
-import { MCP_SERVER_NAME, mcpConfigForAgent } from './mcpEndpoint.js';
+import { MCP_HUB_SERVER_NAME, MCP_SERVER_NAME, mcpConfigForAgent } from './mcpEndpoint.js';
 import { startProjectLead } from './projectLead.js';
 import { FAUST_DIR, LEAD_NAME } from './templates.js';
 
@@ -51,6 +51,12 @@ und duzt den Nutzer.
 4. Gedächtnis: Halte in \`notizen.md\` fest, was der Nutzer dir aufgetragen hat
    und was du weitergegeben hast. Lies die Datei zu Beginn jeder Session.
 
+## Mehrere Rechner
+
+Hast du den MCP Server \`faust-hub\`, läuft das Büro über mehrere Rechner. Nutze
+dann für Überblick und Weiterleiten die Werkzeuge von \`faust-hub\`: Sie sehen
+alle Rechner, die von \`faust\` nur den, auf dem du selbst läufst.
+
 ## Freigaben
 
 Du darfst Projektleiter starten und ihnen Nachrichten schicken. Neue Projekte
@@ -78,7 +84,10 @@ export function ensureSecretaryScaffold(): string {
 export type StartSecretaryResult =
   { ok: true; agentId: number; launched: boolean } | { ok: false; reason: string };
 
-export function startSecretary(deps: LeadToolDeps): StartSecretaryResult {
+export function startSecretary(
+  deps: LeadToolDeps,
+  hub?: { url: string; token: string },
+): StartSecretaryResult {
   for (const [id, agent] of deps.store) {
     if (agent.projectRole === 'secretary') return { ok: true, agentId: id, launched: false };
   }
@@ -93,8 +102,8 @@ export function startSecretary(deps: LeadToolDeps): StartSecretaryResult {
     prompt: `Du bist ${SECRETARY_NAME}. Lies CLAUDE.md und notizen.md und begrüße mich mit einem kurzen Lagebericht.`,
     label: `${SECRETARY_NAME}: Sekretariat`,
     projectRole: 'secretary',
-    mcpConfigFor: mcpConfigForAgent,
-    allowedTools: [`mcp__${MCP_SERVER_NAME}`],
+    mcpConfigFor: (id) => mcpConfigForAgent(id, hub),
+    allowedTools: [`mcp__${MCP_SERVER_NAME}`, ...(hub ? [`mcp__${MCP_HUB_SERVER_NAME}`] : [])],
     bypassPermissions: deps.bypassPermissions,
   });
   if (agentId === null) return { ok: false, reason: 'Das Terminal ist nicht verfügbar.' };
@@ -194,23 +203,42 @@ export function callSecretaryTool(
       const text = typeof args.text === 'string' ? args.text.trim() : '';
       if (!project) return { text: 'Dieses Projekt kenne ich nicht.', isError: true };
       if (!text) return { text: 'Die Nachricht ist leer.', isError: true };
-      const message = `Nachricht vom Sekretär ${SECRETARY_NAME}: ${text}`;
-      const running = leadOf(project.name);
-      if (running && deps.ptyManager.has(running[0])) {
-        void submitToTerminal(deps.ptyManager, running[0], message).catch(() => {});
-        return { text: `An ${LEAD_NAME} (${project.name}) weitergegeben.` };
-      }
-      const started = startProjectLead(deps, project.path);
-      if (!started.ok) return { text: started.reason, isError: true };
-      // The fresh lead first works through its start prompt; a message typed
-      // meanwhile is queued by the CLI and handled right after.
-      setTimeout(() => {
-        void submitToTerminal(deps.ptyManager, started.agentId, message).catch(() => {});
-      }, SECRETARY_LEAD_BOOT_MS);
-      return { text: `${LEAD_NAME} für ${project.name} gestartet, die Nachricht folgt gleich.` };
+      return messageProjectLead(deps, project.path, text);
     }
 
     default:
       return { text: `Unbekanntes Werkzeug: ${name}`, isError: true };
   }
+}
+
+/**
+ * Hand a message to a project's lead, starting the lead first when it is not
+ * running. Shared by the secretary's own tool and the hub's (which reaches a
+ * node through the `messageProjectLead` client message).
+ */
+export function messageProjectLead(
+  deps: LeadToolDeps,
+  projectPath: string,
+  text: string,
+): ToolResult {
+  const project = listDirectories(deps.hostDirectories).find(
+    (d) => normalizeDirectoryPath(d.path) === normalizeDirectoryPath(projectPath),
+  );
+  if (!project) return { text: 'Dieses Projekt kenne ich nicht.', isError: true };
+  const message = `Nachricht vom Sekretär ${SECRETARY_NAME}: ${text}`;
+  const running = [...deps.store].find(
+    ([, a]) => a.projectRole === 'lead' && a.directoryName === project.name,
+  );
+  if (running && deps.ptyManager.has(running[0])) {
+    void submitToTerminal(deps.ptyManager, running[0], message).catch(() => {});
+    return { text: `An ${LEAD_NAME} (${project.name}) weitergegeben.` };
+  }
+  const started = startProjectLead(deps, project.path);
+  if (!started.ok) return { text: started.reason, isError: true };
+  // The fresh lead first works through its start prompt; a message typed
+  // meanwhile is queued by the CLI and handled right after.
+  setTimeout(() => {
+    void submitToTerminal(deps.ptyManager, started.agentId, message).catch(() => {});
+  }, SECRETARY_LEAD_BOOT_MS);
+  return { text: `${LEAD_NAME} für ${project.name} gestartet, die Nachricht folgt gleich.` };
 }

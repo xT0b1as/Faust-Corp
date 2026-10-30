@@ -8,7 +8,7 @@
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 
-import type { LeadToolDeps } from './leadTools.js';
+import type { LeadToolDeps, McpTool, ToolResult } from './leadTools.js';
 import { callLeadTool, LEAD_TOOLS } from './leadTools.js';
 import { MCP_PATH_PREFIX } from './mcpEndpoint.js';
 import { callSecretaryTool, SECRETARY_TOOLS } from './secretary.js';
@@ -28,9 +28,14 @@ function isSecretary(deps: LeadToolDeps, agentId: number): boolean {
   return deps.store.get(agentId)?.projectRole === 'secretary';
 }
 
+/** What an MCP endpoint serves: its tools and how to call one. */
+export interface McpToolProvider {
+  tools: McpTool[];
+  call: (name: string, args: Record<string, unknown>) => ToolResult;
+}
+
 function handle(
-  deps: LeadToolDeps,
-  agentId: number,
+  provider: McpToolProvider,
   message: JsonRpcRequest,
 ): Record<string, unknown> | null {
   // Notifications (no id) get no response body.
@@ -49,13 +54,11 @@ function handle(
     case 'ping':
       return reply({});
     case 'tools/list':
-      return reply({ tools: isSecretary(deps, agentId) ? SECRETARY_TOOLS : LEAD_TOOLS });
+      return reply({ tools: provider.tools });
     case 'tools/call': {
       const name = typeof message.params?.name === 'string' ? message.params.name : '';
       const args = (message.params?.arguments ?? {}) as Record<string, unknown>;
-      const result = isSecretary(deps, agentId)
-        ? callSecretaryTool(deps, name, args)
-        : callLeadTool(deps, agentId, name, args);
+      const result = provider.call(name, args);
       return reply({
         content: [{ type: 'text', text: result.text }],
         isError: result.isError ?? false,
@@ -70,21 +73,22 @@ function handle(
   }
 }
 
-export function registerMcpRoute(
+/** One MCP endpoint at `path`; `provider` resolves per request (null = 503). */
+export function registerMcpEndpoint<P extends Record<string, string>>(
   app: FastifyInstance,
+  path: string,
   auth: Auth,
-  deps: () => LeadToolDeps | null,
+  provider: (params: P) => McpToolProvider | null,
 ): void {
-  app.post<{ Params: { agentId: string }; Body: JsonRpcRequest | JsonRpcRequest[] }>(
-    `${MCP_PATH_PREFIX}/:agentId`,
+  app.post<{ Params: P; Body: JsonRpcRequest | JsonRpcRequest[] }>(
+    path,
     { preHandler: auth },
     async (request, reply) => {
-      const toolDeps = deps();
-      if (!toolDeps) return reply.code(503).send('terminal unavailable');
-      const agentId = Number(request.params.agentId);
+      const tools = provider(request.params as P);
+      if (!tools) return reply.code(503).send('unavailable');
       const body = request.body;
       const responses = (Array.isArray(body) ? body : [body])
-        .map((message) => handle(toolDeps, agentId, message))
+        .map((message) => handle(tools, message))
         .filter((r): r is Record<string, unknown> => r !== null);
       if (responses.length === 0) return reply.code(202).send();
       return reply
@@ -93,5 +97,21 @@ export function registerMcpRoute(
     },
   );
   // No server-initiated stream: tell clients to stick to POST.
-  app.get(`${MCP_PATH_PREFIX}/:agentId`, async (_request, reply) => reply.code(405).send());
+  app.get(path, async (_request, reply) => reply.code(405).send());
+}
+
+/** The per-agent endpoint of a node: a lead's or the secretary's tools. */
+export function registerMcpRoute(
+  app: FastifyInstance,
+  auth: Auth,
+  deps: () => LeadToolDeps | null,
+): void {
+  registerMcpEndpoint<{ agentId: string }>(app, `${MCP_PATH_PREFIX}/:agentId`, auth, (params) => {
+    const toolDeps = deps();
+    if (!toolDeps) return null;
+    const agentId = Number(params.agentId);
+    return isSecretary(toolDeps, agentId)
+      ? { tools: SECRETARY_TOOLS, call: (name, args) => callSecretaryTool(toolDeps, name, args) }
+      : { tools: LEAD_TOOLS, call: (name, args) => callLeadTool(toolDeps, agentId, name, args) };
+  });
 }

@@ -186,4 +186,14 @@ describe('project lead MCP tools', () => {
     const stand = await tool(secId, 'projekt_stand', { projekt: 'Sport App' });
     expect(stand.content[0].text).toContain('# Stand');
   });
+
+  it('gives a hub-started secretary the hub tools as a second server', () => {
+    setMcpEndpoint(4321, 'secret');
+    const sec = startSecretary(deps, { url: 'https://pi.ts.net/mcp/hub', token: 'hubtoken' });
+    expect(sec.ok).toBe(true);
+    const args = spawned.at(-1)!;
+    const config = JSON.parse(fs.readFileSync(args[args.indexOf('--mcp-config') + 1], 'utf-8'));
+    expect(config.mcpServers['faust-hub'].url).toBe('https://pi.ts.net/mcp/hub');
+    expect(args[args.indexOf('--allowedTools') + 1]).toBe('mcp__faust,mcp__faust-hub');
+  });
 });

@@ -23,10 +23,11 @@ import {
   WS_CLOSE_UNAUTHORIZED,
 } from './constants.js';
 import type { HubNodeConfig } from './hub/hubNodes.js';
+import { HubOverview } from './hub/hubOverview.js';
 import { HubSession, type HubSocket } from './hub/hubSession.js';
 import { registerHubTerminalRoute } from './hub/hubTerminalRoute.js';
-import { setMcpEndpoint } from './projects/mcpEndpoint.js';
-import { registerMcpRoute } from './projects/mcpRoute.js';
+import { MCP_HUB_PATH, setMcpEndpoint } from './projects/mcpEndpoint.js';
+import { registerMcpEndpoint, registerMcpRoute } from './projects/mcpRoute.js';
 import { claudeProvider } from './providers/index.js';
 import type { PtySessionManager } from './terminal/ptySessionManager.js';
 import { registerTerminalRoutes } from './terminal/terminalRoutes.js';
@@ -72,6 +73,9 @@ export interface HttpServerOptions {
   allowedHosts?: readonly string[];
   /** Hub mode: aggregate these machines' offices instead of running agents here. */
   hubNodes?: HubNodeConfig[];
+  /** Hub mode: the URL the nodes reach this hub under (e.g. its Tailscale
+   *  name). Enables the secretary's cross-machine `faust-hub` tools. */
+  hubPublicUrl?: string;
 }
 
 /** Result of createHttpServer(). */
@@ -128,9 +132,22 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
   const host = options.host ?? '127.0.0.1';
   const allowedHostnames = privilegedHostnames(host, options.allowedHosts ?? []);
 
+  // Hub mode: one always-on overview of every node, served to the secretary.
+  const hubOverview = options.hubNodes ? new HubOverview(options.hubNodes, hubSocketFactory) : null;
+  if (hubOverview) {
+    registerMcpEndpoint(app, MCP_HUB_PATH, bearerAuth(options.token), () =>
+      hubOverview.asToolProvider(),
+    );
+    app.addHook('onClose', async () => hubOverview.dispose());
+  }
+  const secretaryHubMcp =
+    options.hubNodes && options.hubPublicUrl
+      ? { url: `${options.hubPublicUrl.replace(/\/+$/, '')}${MCP_HUB_PATH}`, token: options.token }
+      : undefined;
+
   registerHealthRoute(app);
   registerHookRoute(app, options);
-  registerWebSocketRoute(app, options, allowedHostnames);
+  registerWebSocketRoute(app, options, allowedHostnames, secretaryHubMcp);
   if (options.hubNodes) {
     registerHubTerminalRoute(app, {
       token: options.token,
@@ -217,6 +234,7 @@ function registerWebSocketRoute(
   app: FastifyInstance,
   options: HttpServerOptions,
   allowedHostnames: ReadonlySet<string>,
+  secretaryHubMcp?: { url: string; token: string },
 ): void {
   app.get('/ws', { websocket: true }, (socket, request) => {
     // CONNECTION gate. Embedded (VS Code) requires the Bearer token. Standalone
@@ -271,6 +289,7 @@ function registerWebSocketRoute(
           send: (m) => safeSend(socket, m),
           hubSeats: () => store.getAdapter()?.loadSeats() ?? {},
           socketFactory: hubSocketFactory,
+          secretaryHubMcp,
         })
       : null;
     const send = (message: Record<string, unknown>) => {

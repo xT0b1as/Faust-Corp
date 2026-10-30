@@ -12,7 +12,7 @@ After=network-online.target
 
 [Service]
 WorkingDirectory=%h
-ExecStart=/usr/bin/env node %h/Faust-Corp/dist/cli.js hub --port 3200 --nodes-file %h/.pixel-agents/nodes.txt --allowed-host CHANGE-ME.tailnet.ts.net
+ExecStart=/usr/bin/env node %h/Faust-Corp/dist/cli.js hub --port 3200 --nodes-file %h/.pixel-agents/nodes.txt --public-url https://CHANGE-ME.tailnet.ts.net --allowed-host CHANGE-ME.tailnet.ts.net
 Restart=on-failure
 RestartSec=5
 

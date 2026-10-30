@@ -165,6 +165,7 @@ components:
         - $ref: '#/components/schemas/StartProjectLead'
         - $ref: '#/components/schemas/AgentCommand'
         - $ref: '#/components/schemas/StartSecretary'
+        - $ref: '#/components/schemas/MessageProjectLead'
         - $ref: '#/components/schemas/RequestDiagnostics'
       discriminator: type
 
@@ -1432,6 +1433,29 @@ components:
       properties:
         type:
           const: startSecretary
+        hubMcpUrl:
+          type: string
+          description: |
+            Set by a hub: its own MCP endpoint, which the secretary loads as a
+            second server (`faust-hub`) for the overview across every machine.
+        hubMcpToken:
+          type: string
+          description: Bearer token for `hubMcpUrl`.
+
+    MessageProjectLead:
+      description: |
+        Hand a message to a Directory's project lead (starting it when it is
+        not running). Sent by a hub on behalf of the secretary.
+      type: object
+      additionalProperties: false
+      required: [type, directoryPath, text]
+      properties:
+        type:
+          const: messageProjectLead
+        directoryPath:
+          type: string
+        text:
+          type: string
 
     AgentCommandKind:
       description: A command the office can type into an agent's terminal.

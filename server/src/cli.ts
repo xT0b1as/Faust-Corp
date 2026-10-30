@@ -57,6 +57,8 @@ export interface CliArgs {
   rotateToken: boolean;
   /** `hub` subcommand: the machines (`--node name=url`) this office aggregates. */
   hubNodes?: HubNodeConfig[];
+  /** `hub --public-url`: how the nodes reach this hub (secretary overview). */
+  hubPublicUrl?: string;
 }
 
 /** Thrown by parseArgs on an invalid --port. Kept separate from process.exit so
@@ -91,6 +93,13 @@ export function parseArgs(argv: string[]): CliArgs {
           );
         }
       }
+      i++;
+    } else if (argv[i] === '--public-url' && args.hubNodes) {
+      const raw = argv[i + 1] ?? '';
+      if (!/^https?:\/\//.test(raw)) {
+        throw new CliArgsError('--public-url needs an http(s) URL, e.g. https://pi.tailnet.ts.net');
+      }
+      args.hubPublicUrl = raw;
       i++;
     } else if (argv[i] === '--node' && args.hubNodes) {
       try {
@@ -155,7 +164,10 @@ Hub (one office over several machines):
                         --node pc=https://pc.tailnet.ts.net/?token=...
                         --node laptop=http://127.0.0.1:3101/?token=...
   --nodes-file <path>   Read the nodes from a file (one name=url per line),
-                        so their tokens stay out of the process list`);
+                        so their tokens stay out of the process list
+  --public-url <url>    How the nodes reach this hub, e.g.
+                        https://pi.tailnet.ts.net. Gives the secretary its
+                        overview across every machine`);
       process.exit(0);
     }
   }
@@ -524,6 +536,7 @@ async function runHub(
     allowedHosts: args.allowedHosts,
     rotateToken: args.rotateToken,
     hubNodes: nodes,
+    hubPublicUrl: args.hubPublicUrl,
   });
   const displayHost =
     args.host === '0.0.0.0' || args.host === '::' || args.host === '' ? '127.0.0.1' : args.host;

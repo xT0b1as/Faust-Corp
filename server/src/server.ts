@@ -82,6 +82,8 @@ export class PixelAgentsServer {
     rotateToken?: boolean;
     /** Hub mode: the machines this office aggregates. */
     hubNodes?: HubNodeConfig[];
+    /** Hub mode: URL the nodes reach the hub under (secretary's faust-hub tools). */
+    hubPublicUrl?: string;
   }): Promise<ServerConfig> {
     const embedded = options?.embedded ?? true;
     const wantsSpa = !embedded;
@@ -149,6 +151,7 @@ export class PixelAgentsServer {
       ptyManager: options?.ptyManager,
       allowedHosts: standalone?.allowedHosts,
       hubNodes: options?.hubNodes,
+      hubPublicUrl: options?.hubPublicUrl,
     });
 
     this.app = app;

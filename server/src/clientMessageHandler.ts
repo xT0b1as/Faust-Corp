@@ -23,7 +23,7 @@ import { hostDirectory } from './hostDirectory.js';
 import { readLayoutFromFile, writeLayoutToFile } from './layoutPersistence.js';
 import { type AgentCommand, runAgentCommand } from './projects/agentCommands.js';
 import { startProjectLead } from './projects/projectLead.js';
-import { secretaryDir, startSecretary } from './projects/secretary.js';
+import { messageProjectLead, secretaryDir, startSecretary } from './projects/secretary.js';
 import type { ConsentEffects } from './providers/hook/consentExecutor.js';
 import { applyConsentChoice } from './providers/hook/consentExecutor.js';
 import { hooksConsentRequest } from './providers/hook/consentGate.js';
@@ -384,19 +384,46 @@ export function handleClientMessage(
         });
         break;
       }
-      const result = startSecretary({
-        store,
-        runtime,
-        ptyManager: ctx.ptyManager,
-        provider: claudeProvider,
-        hostDirectories: hostDirectoriesFor(ctx),
-        bypassPermissions: adapter?.getSetting(KEY_BYPASS_PERMISSIONS, false) ?? false,
-      });
+      const hubUrl = msg.hubMcpUrl;
+      const hubToken = msg.hubMcpToken;
+      const result = startSecretary(
+        {
+          store,
+          runtime,
+          ptyManager: ctx.ptyManager,
+          provider: claudeProvider,
+          hostDirectories: hostDirectoriesFor(ctx),
+          bypassPermissions: adapter?.getSetting(KEY_BYPASS_PERMISSIONS, false) ?? false,
+        },
+        typeof hubUrl === 'string' && typeof hubToken === 'string'
+          ? { url: hubUrl, token: hubToken }
+          : undefined,
+      );
       if (!result.ok) {
         send({ type: 'projectLeadRejected', directoryPath: secretaryDir(), reason: result.reason });
       } else if (!result.launched) {
         send({ type: 'agentSelected', id: result.agentId });
       }
+      break;
+    }
+
+    case 'messageProjectLead': {
+      // From a hub, on the secretary's behalf. Fire-and-forget: the hub's tool
+      // has already answered the secretary.
+      if (!runtime || !ctx.ptyManager) break;
+      const result = messageProjectLead(
+        {
+          store,
+          runtime,
+          ptyManager: ctx.ptyManager,
+          provider: claudeProvider,
+          hostDirectories: hostDirectoriesFor(ctx),
+          bypassPermissions: adapter?.getSetting(KEY_BYPASS_PERMISSIONS, false) ?? false,
+        },
+        String(msg.directoryPath ?? ''),
+        String(msg.text ?? ''),
+      );
+      if (result.isError) console.warn(`[Pixel Agents] messageProjectLead: ${result.text}`);
       break;
     }
 

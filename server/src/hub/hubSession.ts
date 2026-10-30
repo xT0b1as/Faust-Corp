@@ -87,6 +87,9 @@ export interface HubSessionOptions {
   /** Seat assignments the hub persisted, keyed by hub agent id. */
   hubSeats: () => Record<string, { palette?: number; hueShift?: number; seatId?: string }>;
   socketFactory: HubSocketFactory;
+  /** The hub's own MCP endpoint, handed to a secretary started from here so it
+   *  sees every node. Absent when the hub has no public URL. */
+  secretaryHubMcp?: { url: string; token: string };
 }
 
 export class HubSession {
@@ -321,6 +324,7 @@ export class HubSession {
         return byAgent('id');
       case 'launchAgent':
       case 'startProjectLead':
+      case 'messageProjectLead':
         return byPath('directoryPath');
       case 'removeDirectory':
         return byPath('path');
@@ -353,7 +357,13 @@ export class HubSession {
       case 'startSecretary': {
         // One secretary per office: it lives on the first connected node.
         const index = firstConnected();
-        if (index >= 0) this.sendToNode(index, message);
+        const hub = this.options.secretaryHubMcp;
+        if (index >= 0) {
+          this.sendToNode(
+            index,
+            hub ? { ...message, hubMcpUrl: hub.url, hubMcpToken: hub.token } : message,
+          );
+        }
         return true;
       }
       default:

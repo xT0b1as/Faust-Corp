@@ -44,6 +44,8 @@ faust-corp hub --port 3200 \
 
 Ohne Tailscale auf einem Rechner geht ein SSH Tunnel: `ssh -N -L 3101:127.0.0.1:3100 arbeitslaptop` und dann `--node laptop=http://127.0.0.1:3101/?token=...`.
 
+Mit `--public-url https://<hub>.<tailnet>.ts.net` (die Adresse, unter der die Rechner den Hub erreichen) bekommt Sekretär Lynkeus zusätzlich den Überblick über alle Rechner: Lagebericht, Projektliste und Weiterleiten an jeden Wagner, egal auf welchem Rechner.
+
 Der Hub braucht Node.js 22 oder neuer, aber kein Claude. Figuren zeigen ihren Rechner (`@pc`, `@laptop`), Ordner tragen ein Abzeichen, beim Anlegen wählst du den Rechner aus. Ist ein Rechner aus, verschwinden seine Figuren und kommen beim Wiederverbinden zurück.
 
 ## Dauerbetrieb
@@ -114,5 +116,5 @@ Er darf Chats allein starten und beenden. Pushes und alles, was nach außen geht
 ## Bekannte Grenzen
 
 - Sessions eines zweiten Kontos laufen ohne Hooks, ihr Status kommt aus den Session Dateien und ist etwas langsamer.
-- Der Sekretär sieht im Hub nur den Rechner, auf dem er läuft.
+- Ohne `--public-url` sieht der Sekretär im Hub nur den Rechner, auf dem er läuft.
 - Getestet ist alles mit Unit Tests und im Browser mit einem Platzhalter statt des echten `claude`. Der erste echte Durchlauf mit Claude Code steht noch aus. Achte dabei besonders auf "Neustart" (Eingaben ins Terminal) und auf die Freigabe der MCP Werkzeuge.
