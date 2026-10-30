@@ -776,7 +776,7 @@ function App() {
             className="border-border! shadow-pixel"
             onClick={() => setIsSettingsOpen((v) => !v)}
           >
-            Settings
+            Einstellungen
           </Button>
         </div>
       )}

@@ -64,7 +64,11 @@ export function LaunchDrawer({
     // fitViewport: a long list must never push `+ Directory` above the top of
     // the screen, so the drawer is capped at the room above the button and
     // only the rows scroll.
-    <Dropdown isOpen={isOpen} fitViewport className={`min-w-128 ${className}`}>
+    <Dropdown
+      isOpen={isOpen}
+      fitViewport
+      className={`min-w-128 max-w-[calc(100vw-32px)] ${className}`}
+    >
       <div data-testid="launch-drawer" className="flex flex-col min-h-0">
         {/* DropdownItem hard-resets to border-none, so the separator lives on
             this wrapper. Pinned: it never scrolls away with the rows. */}

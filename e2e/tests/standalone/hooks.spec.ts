@@ -144,11 +144,11 @@ test.describe('Standalone / hooks consent', () => {
     // The disclosure travels with the request — the browser renders the
     // server's exact terms.
     await expect(dialog).toContainText('~/.claude/settings.json');
-    await expect(dialog).toContainText('Instant Detection (Hooks)');
+    await expect(dialog).toContainText('Sofort Erkennung (Hooks)');
 
     expect(fs.existsSync(path.join(standalone.tmpHome, '.claude', 'settings.json'))).toBe(false);
 
-    await dialog.getByRole('button', { name: 'Install Hooks' }).click();
+    await dialog.getByRole('button', { name: 'Hooks installieren' }).click();
 
     await expect.poll(() => readConsentFrom(standalone.tmpHome), { timeout: 15_000 }).toBe(true);
     await expect.poll(() => ourHookEventCount(standalone.tmpHome), { timeout: 15_000 }).toBe(12);
@@ -197,7 +197,7 @@ test.describe('Standalone / hooks consent', () => {
       // Its dismissal could never be recorded, so the update notice would
       // return on every load -- a read-only office doesn't show it at all.
       await expect(spectator.getByText(/^Updated to v/)).toHaveCount(0);
-      await expect(page.getByRole('button', { name: 'Settings', exact: true })).toBeVisible();
+      await expect(page.getByRole('button', { name: 'Einstellungen', exact: true })).toBeVisible();
       await expect(page.getByText('View only', { exact: true })).toHaveCount(0);
     } finally {
       await spectator.close();
@@ -221,7 +221,7 @@ test.describe('Standalone / hooks consent', () => {
     const dialog = page.getByRole('dialog');
     await expect(dialog).toBeVisible({ timeout: 30_000 });
     await advanceIntroToConsentStep(dialog);
-    await dialog.getByRole('button', { name: 'Not Now' }).click();
+    await dialog.getByRole('button', { name: 'Nicht jetzt' }).click();
     await finishIntro(dialog);
     await page.waitForTimeout(1_000);
 
@@ -236,7 +236,7 @@ test.describe('Standalone / hooks consent', () => {
     // would pass vacuously over a state this test never caused.
     const settingsModal = await openSettingsModal(page);
     const hooksCheckbox = settingsModal.locator('button', {
-      hasText: 'Instant Detection (Hooks)',
+      hasText: 'Sofort Erkennung (Hooks)',
     });
     const isChecked = async (): Promise<boolean> =>
       ((await hooksCheckbox.locator('span').last().textContent()) ?? '').trim().toLowerCase() ===

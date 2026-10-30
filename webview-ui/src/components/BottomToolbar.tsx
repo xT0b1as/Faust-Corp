@@ -138,16 +138,16 @@ export function BottomToolbar({
       <Button
         variant={isEditMode ? 'active' : 'default'}
         onClick={onToggleEditMode}
-        title="Edit office layout"
+        title="Büro einrichten"
       >
-        Layout
+        Einrichten
       </Button>
       <Button
         variant={isSettingsOpen ? 'active' : 'default'}
         onClick={onToggleSettings}
-        title="Settings"
+        title="Einstellungen"
       >
-        Settings
+        Einstellungen
       </Button>
     </div>
   );
