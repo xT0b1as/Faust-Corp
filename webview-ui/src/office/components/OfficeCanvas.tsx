@@ -163,7 +163,9 @@ export function OfficeCanvas({
           officeState.cameraFollowId !== null
             ? officeState.characters.get(officeState.cameraFollowId)
             : undefined;
-        const cameraFocus = followCh ?? officeState.greeterCameraTarget;
+        const playerFocus =
+          officeState.player && officeState.playerCameraFollow ? officeState.player : null;
+        const cameraFocus = followCh ?? playerFocus ?? officeState.greeterCameraTarget;
         if (cameraFocus) {
           const layout = officeState.getLayout();
           const mapW = layout.cols * TILE_SIZE * zoom;
@@ -682,6 +684,12 @@ export function OfficeCanvas({
         // Clicked empty space — deselect
         officeState.selectedAgentId = null;
         officeState.cameraFollowId = null;
+      }
+
+      // Walking: a tap on the floor sends your own character there.
+      if (officeState.player) {
+        const tile = screenToTile(clientX, clientY);
+        if (tile) officeState.playerWalkTo(tile.col, tile.row);
       }
     },
     [officeState, onClick, screenToWorld, screenToTile, tapSelectsFirst],

@@ -568,3 +568,14 @@ export const DEPARTMENT_ROOM_WIDTH = 10;
 export const DEPARTMENT_ROOM_MIN_HEIGHT = 9;
 /** Desks (with PC and seat) placed in a new department room. */
 export const DEPARTMENT_ROOM_DESKS = 2;
+
+// ── Faust Corp: your own character ───────────────────────────
+/** Reserved id for the user's own walking character (far from agents,
+ *  sub-agents and the greeter). */
+export const PLAYER_ID = -2_000_000_000;
+/** Palette of the user's character. */
+export const PLAYER_PALETTE = 5;
+/** How close (in tiles, Manhattan) an agent must be to talk to it. */
+export const PLAYER_TALK_RANGE_TILES = 2;
+/** How often the walk controls check for an agent within talking range. */
+export const PLAYER_NEAR_POLL_MS = 250;

@@ -20,6 +20,7 @@ import { Tooltip } from './components/Tooltip.js';
 import { Button } from './components/ui/Button.js';
 import { Modal } from './components/ui/Modal.js';
 import { VersionIndicator } from './components/VersionIndicator.js';
+import { WalkControls } from './components/WalkControls.js';
 import { ZoomControls } from './components/ZoomControls.js';
 import { AREA_DEFAULT_COLORS, OFFICE_CANVAS_TEST_ID } from './constants.js';
 import { useDirectoryEditor } from './hooks/useDirectoryEditor.js';
@@ -445,6 +446,18 @@ function App() {
     [terminalAgentIds, isMobile, revealTerminal, showMobileTerminal],
   );
 
+  // Talking to an agent from your own character: select it (label + follow)
+  // and open its terminal, as a click on it would.
+  const handleTalk = useCallback(
+    (agentId: number) => {
+      const os = getOfficeState();
+      os.selectedAgentId = agentId;
+      os.dismissBubble(agentId);
+      handleClick(agentId);
+    },
+    [handleClick],
+  );
+
   // Card click when there is no terminal pane to switch (VS Code, or a
   // watch-only standalone session): ask the host to raise the agent's own
   // terminal — VS Code shows the editor terminal, standalone has nothing to
@@ -586,6 +599,14 @@ function App() {
           {/* Mobile: pinch replaces the zoom buttons, and the toolbar's
                 jobs move to the card bar (+) and the floating Settings button. */}
           {!isMobile && <ZoomControls zoom={editor.zoom} onZoomChange={editor.handleZoomChange} />}
+
+          {!editor.isEditMode && (
+            <WalkControls
+              getOfficeState={getOfficeState}
+              layoutReady={layoutReady}
+              onTalk={handleTalk}
+            />
+          )}
 
           {/* Vignette overlay */}
           <div
