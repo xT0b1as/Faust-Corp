@@ -133,7 +133,9 @@ export interface HookProvider {
   buildLaunchCommand?(
     sessionId: string,
     cwd: string,
-    opts?: { bypassPermissions?: boolean },
+    /** prompt: the session's first message (its task), passed so the CLI
+     *  starts working on it straight away. */
+    opts?: { bypassPermissions?: boolean; prompt?: string },
   ): {
     command: string;
     args: string[];

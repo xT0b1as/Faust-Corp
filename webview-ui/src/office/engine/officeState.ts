@@ -59,6 +59,10 @@ export class OfficeState {
   furniture: FurnitureInstance[];
   walkableTiles: Array<{ col: number; row: number }>;
   characters: Map<number, Character> = new Map();
+  /** Per-agent labels from the server (agentCreated.label / existingAgents.labels).
+   *  Kept apart from the character so a label arriving before the layout (and
+   *  the character) is built is not lost. Shown instead of the Directory name. */
+  agentLabels: Map<number, string> = new Map();
   pets: Pet[] = [];
   /** Accumulated time for furniture animation frame cycling */
   furnitureAnimTimer = 0;

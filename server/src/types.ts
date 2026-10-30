@@ -22,6 +22,9 @@ export interface AgentState {
   hadToolsInTurn: boolean;
   /** Directory name — the agent's origin label (only set for multi-root workspaces) */
   directoryName?: string;
+  /** Per-agent name shown instead of directoryName, so several agents in one
+   *  Directory stay apart. Never an Area-mapping key; that stays directoryName. */
+  label?: string;
   /** Timestamp of last JSONL data received (ms since epoch) */
   lastDataAt: number;
   /** Total JSONL lines processed for this agent */
@@ -103,6 +106,8 @@ export interface PersistedAgent {
    *  label (and the Area-mapping key) off every agent from the previous
    *  session; never written — the next persist rewrites it as directoryName. */
   folderName?: string;
+  /** Per-agent label (see AgentState.label). */
+  label?: string;
 
   // -- Agent Teams --
   teamName?: string;

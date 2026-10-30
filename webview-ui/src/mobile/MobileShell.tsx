@@ -28,6 +28,7 @@ interface MobileShellProps {
   directories: Directory[];
   onAddDirectory: () => void;
   onEditDirectory: (directory: Directory) => void;
+  onLaunchWithTask: (directory: Directory) => void;
   onCloseAgent: (agentId: number) => void;
   /** The software keyboard is up (useKeyboardViewport). */
   keyboardOpen: boolean;
@@ -52,6 +53,7 @@ export function MobileShell({
   directories,
   onAddDirectory,
   onEditDirectory,
+  onLaunchWithTask,
   onCloseAgent,
   keyboardOpen,
 }: MobileShellProps) {
@@ -130,6 +132,7 @@ export function MobileShell({
         directories={directories}
         onAddDirectory={onAddDirectory}
         onEditDirectory={onEditDirectory}
+        onLaunchWithTask={onLaunchWithTask}
         canLaunch={terminalAvailable}
         launchUnavailableReason={terminalUnavailableReason}
         getAppearance={drawer.getAppearance}

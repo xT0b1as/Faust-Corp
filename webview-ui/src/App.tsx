@@ -10,6 +10,8 @@ import { DirectoryModal } from './components/DirectoryModal.js';
 import { EditActionBar } from './components/EditActionBar.js';
 import { IntroBubble } from './components/IntroBubble.js';
 import { MigrationNotice } from './components/MigrationNotice.js';
+import type { LaunchTask } from './components/NewChatModal.js';
+import { NewChatModal } from './components/NewChatModal.js';
 import { SettingsModal } from './components/SettingsModal.js';
 import { TerminalDrawer } from './components/TerminalDrawer.js';
 import { Tooltip } from './components/Tooltip.js';
@@ -163,9 +165,16 @@ function App() {
     agentSeenActivity,
   });
 
-  const launchIntoDirectory = useCallback((directory: Directory) => {
-    transport.send({ type: 'launchAgent', directoryPath: directory.path });
+  const launchIntoDirectory = useCallback((directory: Directory, task?: LaunchTask) => {
+    transport.send({
+      type: 'launchAgent',
+      directoryPath: directory.path,
+      prompt: task?.prompt,
+      label: task?.label,
+    });
   }, []);
+  // The Directory the new-chat modal is open for (launch with name + task).
+  const [newChatDirectory, setNewChatDirectory] = useState<Directory | null>(null);
   const mobileShell = useMobileShell({
     getOfficeState,
     terminalAgentIds,
@@ -639,6 +648,7 @@ function App() {
           directories={directories}
           onAddDirectory={directoryEditor.add}
           onEditDirectory={directoryEditor.edit}
+          onLaunchWithTask={setNewChatDirectory}
           terminalAvailable={terminalAvailable}
           terminalUnavailableReason={terminalUnavailableReason}
         />
@@ -716,6 +726,7 @@ function App() {
           directories={directories}
           onAddDirectory={directoryEditor.add}
           onEditDirectory={directoryEditor.edit}
+          onLaunchWithTask={setNewChatDirectory}
           onCloseAgent={handleCloseAgent}
           keyboardOpen={keyboard.keyboardOpen}
         />
@@ -798,6 +809,16 @@ function App() {
       {/* Rendered at the composition root, not inside a launch surface: the
           drawer that opens it lives in BottomToolbar on desktop and
           MobileAgentBar on mobile, and both close as soon as it appears. */}
+      <NewChatModal
+        directory={newChatDirectory}
+        onSubmit={(directory, task) => {
+          setNewChatDirectory(null);
+          // Mobile slides over to the new terminal, like a plain launch from the + card.
+          if (isMobile) mobileShell.launch(directory, task);
+          else launchIntoDirectory(directory, task);
+        }}
+        onClose={() => setNewChatDirectory(null)}
+      />
       <DirectoryModal
         isOpen={directoryEditor.modal.open}
         editing={directoryEditor.modal.editing}

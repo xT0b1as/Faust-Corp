@@ -275,7 +275,10 @@ export function ToolOverlay({
 
         // Team info
         const teamRoleLabel = ch.isTeamLead ? 'LEAD' : ch.agentName || null;
-        const hasExtraLines = !!(ch.directoryName || teamRoleLabel);
+        // A per-agent label (parallel sessions in one Directory) replaces the
+        // Directory name; teammates keep theirs, they're named via agentName.
+        const originLabel = (!isSub && officeState.agentLabels.get(id)) || ch.directoryName;
+        const hasExtraLines = !!(originLabel || teamRoleLabel);
 
         // Context gauge. Every agent gets one — lead, teammate, adopted,
         // headless — as soon as it has taken a turn. Sub-agents never do: they
@@ -327,9 +330,9 @@ export function ToolOverlay({
                   >
                     {activityText}
                   </span>
-                  {ch.directoryName && (
+                  {originLabel && (
                     <span className="text-2xs leading-none overflow-hidden text-ellipsis block">
-                      {ch.directoryName}
+                      {originLabel}
                     </span>
                   )}
                 </div>

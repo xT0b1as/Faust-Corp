@@ -164,6 +164,7 @@ export class AgentStateStore {
         jsonlFile: agent.jsonlFile,
         projectDir: agent.projectDir,
         directoryName: agent.directoryName,
+        label: agent.label,
         teamName: agent.teamName,
         agentName: agent.agentName,
         isTeamLead: agent.isTeamLead,

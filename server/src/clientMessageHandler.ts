@@ -151,6 +151,8 @@ export function handleClientMessage(
         { store, runtime, ptyManager: ctx.ptyManager, provider: claudeProvider },
         {
           directoryPath: msg.directoryPath as string | undefined,
+          prompt: msg.prompt as string | undefined,
+          label: msg.label as string | undefined,
           bypassPermissions: adapter?.getSetting(KEY_BYPASS_PERMISSIONS, false) ?? false,
         },
       );
@@ -591,6 +593,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
   // 6. Existing agents (either just restored, or from VS Code adapter if present)
   const agentIds: number[] = [];
   const directoryNames: Record<number, string> = {};
+  const labels: Record<number, string> = {};
   const externalAgents: Record<number, boolean> = {};
   const persistedSeats = adapter?.loadSeats() ?? {};
   const agentMeta: Record<number, { palette?: number; hueShift?: number; seatId?: string }> = {};
@@ -598,6 +601,9 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
     agentIds.push(id);
     if (agent.directoryName) {
       directoryNames[id] = agent.directoryName;
+    }
+    if (agent.label) {
+      labels[id] = agent.label;
     }
     if (agent.isExternal) {
       externalAgents[id] = true;
@@ -614,6 +620,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
     agents: agentIds,
     agentMeta,
     directoryNames,
+    labels,
     externalAgents,
   });
 

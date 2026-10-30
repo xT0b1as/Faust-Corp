@@ -87,6 +87,7 @@ export interface AgentCreated {
   type: 'agentCreated';
   id: number;
   directoryName?: string;
+  label?: string;
   isExternal?: boolean;
   palette?: number;
   hueShift?: number;
@@ -107,6 +108,7 @@ export interface ExistingAgents {
   agents: number[];
   agentMeta: Record<string, AgentSeatMeta>;
   directoryNames: Record<string, string>;
+  labels?: Record<string, string>;
   externalAgents: Record<string, boolean>;
 }
 
@@ -383,6 +385,8 @@ export interface WebviewReady {
 export interface LaunchAgent {
   type: 'launchAgent';
   directoryPath?: string;
+  prompt?: string;
+  label?: string;
 }
 
 export interface FocusAgent {

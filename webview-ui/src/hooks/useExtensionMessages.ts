@@ -349,6 +349,9 @@ export function useExtensionMessages(
         const teammateName = msg.teammateName as string | undefined;
         const teammateParentId = msg.parentAgentId as number | undefined;
         const teamName = msg.teamName as string | undefined;
+        const label = msg.label as string | undefined;
+        if (label) os.agentLabels.set(id, label);
+        else os.agentLabels.delete(id);
         setAgents((prev) => (prev.includes(id) ? prev : [...prev, id]));
         // Don't auto-select teammates (keep focus on lead)
         if (!isTeammate) {
@@ -390,6 +393,7 @@ export function useExtensionMessages(
         saveAgentSeats(os);
       } else if (msg.type === 'agentClosed') {
         const id = msg.id as number;
+        os.agentLabels.delete(id);
         setAgents((prev) => prev.filter((a) => a !== id));
         setSelectedAgent((prev) => (prev === id ? null : prev));
         // Drop the drawer tab too. terminalSessionClosed normally does this, but
@@ -411,8 +415,11 @@ export function useExtensionMessages(
         const meta = (msg.agentMeta || {}) as Record<number, ExistingAgentMeta>;
         const directoryNames = (msg.directoryNames || {}) as Record<number, string>;
         const externalAgents = (msg.externalAgents || {}) as Record<number, boolean>;
+        const labels = (msg.labels || {}) as Record<number, string>;
         const headlessAgents: Record<number, boolean> = {};
         for (const id of incoming) {
+          if (labels[id]) os.agentLabels.set(id, labels[id]);
+          else os.agentLabels.delete(id);
           noteDirectoryName(directoryNames[id]);
           if (isHeadlessAgent(externalAgents[id])) headlessAgents[id] = true;
         }

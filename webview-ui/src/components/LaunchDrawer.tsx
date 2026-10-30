@@ -16,6 +16,8 @@ interface LaunchDrawerProps {
   onAddDirectory: () => void;
   /** Open the Directory modal pre-filled with this entry (user-defined rows). */
   onEditDirectory: (directory: Directory) => void;
+  /** Open the new-chat modal for this Directory (launch with a name and task). */
+  onLaunchWithTask: (directory: Directory) => void;
   className?: string;
 }
 
@@ -44,6 +46,7 @@ export function LaunchDrawer({
   onSelect,
   onAddDirectory,
   onEditDirectory,
+  onLaunchWithTask,
   className = '',
 }: LaunchDrawerProps) {
   return (
@@ -68,6 +71,7 @@ export function LaunchDrawer({
               directory={directory}
               onSelect={onSelect}
               onEditDirectory={onEditDirectory}
+              onLaunchWithTask={onLaunchWithTask}
             />
           ))}
         </div>
@@ -80,9 +84,15 @@ interface DirectoryRowProps {
   directory: Directory;
   onSelect: (directory: Directory) => void;
   onEditDirectory: (directory: Directory) => void;
+  onLaunchWithTask: (directory: Directory) => void;
 }
 
-function DirectoryRow({ directory, onSelect, onEditDirectory }: DirectoryRowProps) {
+function DirectoryRow({
+  directory,
+  onSelect,
+  onEditDirectory,
+  onLaunchWithTask,
+}: DirectoryRowProps) {
   const editable = directory.source === 'user';
   const longPressTimer = useRef<number | undefined>(undefined);
   const pressOrigin = useRef<{ x: number; y: number } | null>(null);
@@ -159,6 +169,18 @@ function DirectoryRow({ directory, onSelect, onEditDirectory }: DirectoryRowProp
           )}
         </span>
       </DropdownItem>
+      {/* Always visible, touch included: launching with a task is a primary
+          action, not an edit affordance. */}
+      <button
+        onClick={() => onLaunchWithTask(directory)}
+        aria-label={`Neuer Chat mit Auftrag in ${directory.name}`}
+        title="Neuer Chat mit Auftrag"
+        className="shrink-0 self-stretch flex items-center px-8 bg-transparent border-none rounded-none cursor-pointer text-sm leading-none text-text-muted hover:text-text"
+      >
+        <span className="material-symbols-sharp text-[12px]" aria-hidden="true">
+          add_task
+        </span>
+      </button>
       {editable && (
         // Hidden until the row is hovered (hover: only exists on devices that
         // have it) or the button is keyboard-focused; gone entirely on coarse

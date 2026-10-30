@@ -196,6 +196,11 @@ components:
           type: integer
         directoryName:
           type: string
+        label:
+          type: string
+          description: |
+            Per-agent name shown instead of the Directory name, so several agents
+            in one Directory stay distinguishable. Absent for unnamed agents.
         isExternal:
           type: boolean
         palette:
@@ -249,6 +254,11 @@ components:
         directoryNames:
           type: object
           description: Map of agent ID (string) to Directory name.
+          additionalProperties:
+            type: string
+        labels:
+          type: object
+          description: Map of agent ID (string) to per-agent label (see agentCreated.label).
           additionalProperties:
             type: string
         externalAgents:
@@ -989,6 +999,12 @@ components:
         directoryPath:
           type: string
           description: Path of the Directory to launch into.
+        prompt:
+          type: string
+          description: First message sent to the new agent (its task). Omitted for a blank session.
+        label:
+          type: string
+          description: Name for the new agent; defaults to a numbered Directory name when the Directory already has agents.
 
     FocusAgent:
       description: Focus an agent's terminal.
