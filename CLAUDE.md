@@ -1,5 +1,7 @@
 # Pixel Agents — Compressed Reference
 
+> **This repo is Faust Corp**, a personal fork of Pixel Agents. Everything below describes the upstream architecture, which still holds; the fork's additions are summarized in "Faust Corp additions" at the end. User docs: `docs/faust-corp/anleitung.md`. UI and agent-facing text of the additions is German.
+
 Pixel art office where AI agents (Claude Code terminals today, any tool tomorrow) become animated characters. Ships as a **VS Code extension** and an **`npx pixel-agents` standalone CLI** from the same source tree.
 
 `CONTEXT.md` is the canonical glossary — read it for what terms like Agent, Sub-agent, Teammate, Lead, Adopt, or Headless agent mean here, and use its vocabulary in code, comments, and docs.
@@ -53,7 +55,7 @@ server/                              Lifecycle runtime + Fastify HTTP/WS server
     teamUtils.ts                     isInlineTeammateOf, getInlineTeammates, hasInlineTeammates
     types.ts                         ServerAgentState
     constants.ts                     All timing/scanning constants
-  __tests__/                         28 Vitest files
+  __tests__/                         Vitest files (one per module)
   manual-hook-events.http            Manual hook testing helper (REST-Client format)
 
 adapters/vscode/                     VS Code surface — composes core + server
@@ -229,8 +231,8 @@ Adding a new CLI integration is one subdirectory under `server/src/providers/hoo
 
 `core/asyncapi.yaml` is the contract. Pinned to **3.0.0** because `@asyncapi/modelina@5.10.1` declares `supportedVersions: ['3.0.0']` only; bumping to 3.1.0 produces `export type Root = any`. Revisit when Modelina ships 3.1.0 support.
 
-- **39 ServerMessage variants** (server → client): agent lifecycle, agent activity, sub-agent activity, team + context usage, assets, access (`officeAccess` — sent first on `webviewReady`; `readOnly` hides every control a read-only office would only have refused), settings (`bypassPermissionsUpdated` — the skip-permissions posture, broadcast to every office on change because every launch reads it) + directories (`directoriesLoaded`, `directorySaved` — a save's ack to its sender, carrying the entry as stored, whose name keys the Area mapping; `directoryRejected`, `directorySuggestions`), terminal, diagnostics.
-- **27 ClientMessage variants** (client → server): lifecycle (`webviewReady`, `launchAgent`, `focusAgent`, `closeAgent`), layout (`saveAgentSeats`, `saveLayout`, `exportLayout`, `importLayout`), settings (`setSoundEnabled`, `setHooksEnabled`, `setWatchAllSessions`, `setAlwaysShowLabels`, `setHooksInfoShown`, `setLastSeenVersion`, `setBypassPermissions`, `setShowHostDirectories` — whether the host's own Directories are listed, off by default; only the list is gated, launches still name agents after them), directories (`saveDirectory`, `removeDirectory`, `requestDirectorySuggestions`), terminal, discovery + assets, diagnostics.
+- **42 ServerMessage variants** (server → client): agent lifecycle, agent activity, sub-agent activity, team + context usage, assets, access (`officeAccess` — sent first on `webviewReady`; `readOnly` hides every control a read-only office would only have refused), settings (`bypassPermissionsUpdated` — the skip-permissions posture, broadcast to every office on change because every launch reads it) + directories (`directoriesLoaded`, `directorySaved` — a save's ack to its sender, carrying the entry as stored, whose name keys the Area mapping; `directoryRejected`, `directorySuggestions`), Faust Corp (`projectLeadRejected`, `agentCommandRejected`, `hubNodes`), terminal, diagnostics.
+- **30 ClientMessage variants** (client → server): lifecycle (`webviewReady`, `launchAgent`, `focusAgent`, `closeAgent`), layout (`saveAgentSeats`, `saveLayout`, `exportLayout`, `importLayout`), settings (`setSoundEnabled`, `setHooksEnabled`, `setWatchAllSessions`, `setAlwaysShowLabels`, `setHooksInfoShown`, `setLastSeenVersion`, `setBypassPermissions`, `setShowHostDirectories` — whether the host's own Directories are listed, off by default; only the list is gated, launches still name agents after them), directories (`saveDirectory`, `removeDirectory`, `requestDirectorySuggestions`), Faust Corp (`startProjectLead`, `startSecretary`, `agentCommand`), terminal, discovery + assets, diagnostics.
 
 Both unions use `oneOf` with `discriminator: type`. Every concrete message sets `additionalProperties: false`.
 
@@ -687,3 +689,17 @@ Supporting: `wall-tile-editor.html` (wall sprite editing), `jsonl-viewer.html` (
 - npm package: `pixel-agents` (CLI bin: `pixel-agents`)
 - GitHub: `https://github.com/pixel-agents-hq/pixel-agents`
 - License: MIT
+
+## Faust Corp additions
+
+Kept in separate modules where possible so upstream merges stay easy (the shared touch points are `clientMessageHandler.ts`, `httpServer.ts`, `App.tsx`, `LaunchDrawer.tsx` and its two surfaces).
+
+- **Labelled launches** — `launchAgent` carries optional `prompt` (first message, passed after `--`) and `label` (character name, persisted, sent as `agentCreated.label` / `existingAgents.labels`, stored client-side in `OfficeState.agentLabels`). Unlabelled parallel launches in one Directory get "<Directory> N" (`standaloneAgentLauncher.defaultLabel`). `NewChatModal.tsx` is the UI.
+- **Project memory + lead** (`server/src/projects/`) — `projectScaffold.ts` writes `.faust/` (additive, never overwrites) and appends one marked import block to the project's `CLAUDE.md`; `templates.ts` holds every German text; `projectLead.ts` launches Wagner (`projectRole: 'lead'`, one per Directory, only for known Directories).
+- **Agent commands** (`agentCommands.ts`) — `agentCommand` types into a PTY: `compact`, or `restartWithHandover` (handover prompt → wait for `agentStatus: waiting` → `/clear` → resume prompt). Text and Enter are written apart (`AGENT_COMMAND_SUBMIT_DELAY_MS`) so the TUI doesn't treat them as one paste.
+- **MCP for leads / secretary** — JSON-only Streamable-HTTP MCP at `POST /mcp/agent/:id` (`mcpRoute.ts`, Bearer = hook token). The tool set depends on the calling agent's `projectRole` (`leadTools.ts`, `secretary.ts`); lead tools are scoped to the lead's own Directory. The endpoint reaches a session via `--mcp-config` built from `mcpEndpoint.ts`.
+- **Accounts** — a user Directory may carry `account` (a Claude config dir). Launches into it set `CLAUDE_CONFIG_DIR` and look for sessions under that dir (`getSessionDirs(workspace, configDir)`). Hooks are not installed there yet, so those agents run in heuristic mode.
+- **Secretary** (`secretary.ts`) — Lynkeus, one per office, lives in `~/.pixel-agents/sekretariat/`.
+- **Departments** (`webview-ui/src/office/layout/departmentRoom.ts`) — pure layout op: builds a walled, furnished room right of the rightmost wall with a door and an Area; `App.tsx` runs it only after `directorySaved`.
+- **Hub** (`server/src/hub/`) — `faust-corp hub --node name=url`. Per browser socket, `HubSession` opens one privileged upstream `/ws` per node: drops office-owned messages, remaps agent ids into `(index+1)*HUB_ID_STRIDE + id`, prefixes Directory paths with `node::`, routes agent/Directory messages back; `hubTerminalRoute.ts` pipes `/terminal/:id`. Hub seats live in `hub-state.json`. Needs Node 22 (global WebSocket).
+- **Player character** — `OfficeState.player` (like the greeter: not in `characters`, never persisted), `WalkControls.tsx` for keys/tap/talk.
