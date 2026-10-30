@@ -74,17 +74,19 @@ export function formatToolStatus(toolName: string, input?: unknown): string {
 
 // ── Session dir + launch command ──
 
-function getSessionDirs(workspacePath: string): string[] {
-  // Claude stores sessions at ~/.claude/projects/<workspace-path-with-dashes>/.
+function getSessionDirs(workspacePath: string, configDir?: string): string[] {
+  // Claude stores sessions at ~/.claude/projects/<workspace-path-with-dashes>/,
+  // or under $CLAUDE_CONFIG_DIR/projects/ for a session run with another config.
   const dirName = normalizeProjectPath(workspacePath);
-  const projectDir = path.join(os.homedir(), '.claude', 'projects', dirName);
+  const configRoot = configDir ?? path.join(os.homedir(), '.claude');
+  const projectDir = path.join(configRoot, 'projects', dirName);
 
   // Try exact match first.
   if (fs.existsSync(projectDir)) return [projectDir];
 
   // Case-insensitive fallback for Windows: drive letter casing can differ
   // between what VS Code gives us (e.g. "c:\...") and Claude's encoding ("C:\...").
-  const projectsRoot = path.join(os.homedir(), '.claude', 'projects');
+  const projectsRoot = path.join(configRoot, 'projects');
   try {
     if (fs.existsSync(projectsRoot)) {
       const lowerDirName = dirName.toLowerCase();
@@ -107,6 +109,7 @@ function buildLaunchCommand(
     prompt?: string;
     mcpConfig?: string;
     allowedTools?: string[];
+    configDir?: string;
   },
 ): { command: string; args: string[]; env?: Record<string, string> } {
   const args = ['--session-id', sessionId];
@@ -117,7 +120,11 @@ function buildLaunchCommand(
   // stays interactive. `--` keeps a prompt starting with "-" from parsing as a flag.
   const prompt = opts?.prompt?.trim();
   if (prompt) args.push('--', prompt);
-  return { command: 'claude', args, env: { PWD: cwd } };
+  const env: Record<string, string> = { PWD: cwd };
+  // A second account is a second config directory: its own login, settings
+  // and session files.
+  if (opts?.configDir) env.CLAUDE_CONFIG_DIR = opts.configDir;
+  return { command: 'claude', args, env };
 }
 
 /** Root that holds every Claude session across all workspaces. Used by the

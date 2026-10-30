@@ -35,7 +35,7 @@ export type DirectorySaveResult = { ok: true; path: string } | { ok: false; reas
 
 /** A stored user-defined Directory: the name and resolved path as persisted. */
 export type DirectoryStoreResult =
-  { ok: true; name: string; path: string } | { ok: false; reason: string };
+  { ok: true; name: string; path: string; account?: string } | { ok: false; reason: string };
 
 export type DirectoryRemoveResult = { ok: true } | { ok: false; reason: string };
 
@@ -111,6 +111,7 @@ export function buildDirectoryUnion(
       name: user.name,
       path: user.path,
       source: 'user',
+      ...(user.account ? { account: user.account } : {}),
     });
   }
 
@@ -134,6 +135,7 @@ export function saveUserDirectory(input: {
   name: string;
   path: string;
   previousPath?: string;
+  account?: string;
 }): DirectoryStoreResult {
   const validation = validateDirectoryPath(input.path);
   if (!validation.ok) {
@@ -153,12 +155,13 @@ export function saveUserDirectory(input: {
     const key = normalizeDirectoryPath(entry.path);
     return key !== newKey && key !== previousKey;
   });
-  cfg.directories.push({ name, path: resolvedPath });
+  const account = input.account?.trim() ? path.resolve(expandTilde(input.account)) : undefined;
+  cfg.directories.push({ name, path: resolvedPath, ...(account ? { account } : {}) });
 
   if (!writeConfig(cfg)) {
     return { ok: false, reason: DIRECTORY_WRITE_FAILED_REASON };
   }
-  return { ok: true, name, path: resolvedPath };
+  return { ok: true, name, path: resolvedPath, account };
 }
 
 /**
@@ -234,6 +237,7 @@ export function handleDirectoryClientMessage(
         name: typeof msg.name === 'string' ? msg.name : '',
         path: submittedPath,
         previousPath: typeof msg.previousPath === 'string' ? msg.previousPath : undefined,
+        account: typeof msg.account === 'string' ? msg.account : undefined,
       });
       if (!result.ok) {
         deps.reply({ type: 'directoryRejected', path: submittedPath, reason: result.reason });
@@ -246,7 +250,12 @@ export function handleDirectoryClientMessage(
       // and Area mappings are keyed by it, so the office takes it from here.
       deps.reply({
         type: 'directorySaved',
-        directory: { name: result.name, path: result.path, source: 'user' },
+        directory: {
+          name: result.name,
+          path: result.path,
+          source: 'user',
+          ...(result.account ? { account: result.account } : {}),
+        },
       });
       return true;
     }
@@ -283,4 +292,16 @@ function broadcastDirectories(deps: DirectoryMessageDeps): void {
     type: 'directoriesLoaded',
     directories: listDirectories(deps.hostDirectories()),
   });
+}
+
+/** The Claude config directory of the Directory a launch path belongs to, if
+ *  it names one. Undefined = the default account. */
+export function accountForLaunch(
+  launchPath: string,
+  hostDirectories: HostDirectoryEntry[],
+): string | undefined {
+  const key = normalizeDirectoryPath(launchPath);
+  return listDirectories(hostDirectories).find(
+    (directory) => normalizeDirectoryPath(directory.path) === key,
+  )?.account;
 }

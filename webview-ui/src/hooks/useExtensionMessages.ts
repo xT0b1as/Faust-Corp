@@ -69,6 +69,8 @@ export interface Directory {
   /** Where the entry came from. Host-contributed entries (VS Code's workspace
    *  folders, standalone's start directory) are read-only in the office. */
   source: 'user' | 'host';
+  /** Claude config directory for agents launched here; absent = default account. */
+  account?: string;
 }
 
 /** A refused saveDirectory, shown inline in the Directory modal. `seq` rises

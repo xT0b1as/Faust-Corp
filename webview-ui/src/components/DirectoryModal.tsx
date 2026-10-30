@@ -10,6 +10,8 @@ export interface DirectoryModalValues {
   path: string;
   /** Areas this Directory's future agents should be seated in. */
   areas: string[];
+  /** Claude config directory (second account); empty = default account. */
+  account: string;
 }
 
 interface DirectoryModalProps {
@@ -58,6 +60,7 @@ export function DirectoryModal({
 }: DirectoryModalProps) {
   const [name, setName] = useState('');
   const [path, setPath] = useState('');
+  const [account, setAccount] = useState('');
   const [selectedAreas, setSelectedAreas] = useState<string[]>([]);
 
   // Refill from whatever the modal was opened on. Keyed on isOpen too, so
@@ -66,6 +69,7 @@ export function DirectoryModal({
     if (!isOpen) return;
     setName(editing?.name ?? '');
     setPath(editing?.path ?? '');
+    setAccount(editing?.account ?? '');
     setSelectedAreas(assignedAreas);
     // assignedAreas is derived per render; keying the refill on it would reset
     // the multi-select on every keystroke. Opening the modal is the only moment
@@ -76,7 +80,12 @@ export function DirectoryModal({
   if (!isOpen) return null;
 
   const submit = () => {
-    onSubmit({ name: name.trim(), path: path.trim(), areas: selectedAreas });
+    onSubmit({
+      name: name.trim(),
+      path: path.trim(),
+      areas: selectedAreas,
+      account: account.trim(),
+    });
   };
 
   const toggleArea = (label: string) => {
@@ -136,6 +145,16 @@ export function DirectoryModal({
             value={path}
             placeholder="~/code/my-project"
             onChange={(e) => setPath(e.target.value)}
+            className="text-sm py-2 px-4 bg-bg border-2 border-border rounded-none text-text"
+          />
+        </label>
+        <label className="flex flex-col gap-2 text-xs text-text-muted">
+          Claude Konto (Konfigurationsordner, leer = Standard)
+          <input
+            type="text"
+            value={account}
+            placeholder="~/.claude-arbeit"
+            onChange={(e) => setAccount(e.target.value)}
             className="text-sm py-2 px-4 bg-bg border-2 border-border rounded-none text-text"
           />
         </label>

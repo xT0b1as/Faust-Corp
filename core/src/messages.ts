@@ -340,6 +340,7 @@ export interface Directory {
   name: string;
   path: string;
   source: DirectorySource;
+  account?: string;
 }
 
 export type DirectorySource = 'user' | 'host';
@@ -521,6 +522,7 @@ export interface SaveDirectory {
   name: string;
   path: string;
   previousPath?: string;
+  account?: string;
 }
 
 export interface RemoveDirectory {

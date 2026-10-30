@@ -165,6 +165,15 @@ function DirectoryRow({
           <span className="overflow-hidden text-ellipsis" title={directory.path}>
             {directory.name}
           </span>
+          {directory.account && (
+            <span
+              aria-hidden="true"
+              title={`Claude Konto: ${directory.account}`}
+              className="shrink-0 text-2xs text-text-muted border-2 border-border pl-4 pr-2 leading-none"
+            >
+              {directory.account.split(/[\\/]/).pop()}
+            </span>
+          )}
           {directory.source === 'host' && (
             <span
               aria-hidden="true"

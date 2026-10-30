@@ -54,6 +54,8 @@ export type HooksConsentState = 'granted' | 'declined';
 export interface UserDirectory {
   name: string;
   path: string;
+  /** Claude config directory (CLAUDE_CONFIG_DIR) for agents launched here. */
+  account?: string;
 }
 
 export interface PixelAgentsConfig {
@@ -149,11 +151,19 @@ export function parseUserDirectories(raw: unknown): UserDirectory[] {
     if (!entry || typeof entry !== 'object') {
       continue;
     }
-    const { name, path: dirPath } = entry as { name?: unknown; path?: unknown };
+    const {
+      name,
+      path: dirPath,
+      account,
+    } = entry as { name?: unknown; path?: unknown; account?: unknown };
     if (typeof name !== 'string' || typeof dirPath !== 'string' || dirPath.length === 0) {
       continue;
     }
-    out.push({ name, path: dirPath });
+    out.push({
+      name,
+      path: dirPath,
+      ...(typeof account === 'string' && account.length > 0 ? { account } : {}),
+    });
   }
   return out;
 }

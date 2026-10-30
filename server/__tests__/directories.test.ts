@@ -5,6 +5,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
 import { readConfig } from '../src/configPersistence.js';
 import {
+  accountForLaunch,
   buildDirectoryUnion,
   directoryNameForLaunch,
   expandTilde,
@@ -144,6 +145,16 @@ describe('directories', () => {
 
       expect(readConfig().directories).toEqual([{ name: 'Mine', path: alpha }]);
       expect(listDirectories([])).toEqual([{ name: 'Mine', path: alpha, source: 'user' }]);
+    });
+
+    it("keeps a Directory's Claude account, expanded, and lists it", () => {
+      saveUserDirectory({ name: 'Arbeit', path: alpha, account: '~/.claude-arbeit' });
+      const account = path.join(os.homedir(), '.claude-arbeit');
+      expect(readConfig().directories).toEqual([{ name: 'Arbeit', path: alpha, account }]);
+      expect(listDirectories([])).toEqual([
+        { name: 'Arbeit', path: alpha, source: 'user', account },
+      ]);
+      expect(accountForLaunch(alpha, [])).toBe(account);
     });
 
     it('stores the expanded path, so ~ never reaches the office', () => {

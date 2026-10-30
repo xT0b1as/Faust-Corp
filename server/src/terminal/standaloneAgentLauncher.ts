@@ -20,7 +20,7 @@ import type { AgentRuntime } from '../agentRuntime.js';
 import { createAgentState } from '../agentState.js';
 import type { AgentStateStore } from '../agentStateStore.js';
 import { JSONL_POLL_INTERVAL_MS } from '../constants.js';
-import { directoryNameForLaunch } from '../directories.js';
+import { accountForLaunch, directoryNameForLaunch } from '../directories.js';
 import { startFileWatching } from '../fileWatcher.js';
 import { directoryNameFor, hostDirectory } from '../hostDirectory.js';
 import { assignPaletteIfNeeded } from '../paletteAssigner.js';
@@ -71,6 +71,7 @@ export function launchStandaloneAgent(
 
   const cwd = options.directoryPath ?? process.cwd();
   const sessionId = crypto.randomUUID();
+  const configDir = accountForLaunch(cwd, [hostDirectory()]);
 
   const launch = provider.buildLaunchCommand?.(sessionId, cwd, {
     bypassPermissions: options.bypassPermissions,
@@ -79,13 +80,14 @@ export function launchStandaloneAgent(
     // id the agent gets.
     mcpConfig: options.mcpConfigFor?.(store.nextAgentId.current),
     allowedTools: options.allowedTools,
+    configDir,
   });
   if (!launch) {
     console.error('[Pixel Agents] Terminal: provider.buildLaunchCommand is not implemented');
     return null;
   }
 
-  const dirs = provider.getSessionDirs?.(cwd) ?? [];
+  const dirs = provider.getSessionDirs?.(cwd, configDir) ?? [];
   if (dirs.length === 0) {
     console.error('[Pixel Agents] Terminal: provider returned no session dirs');
     return null;

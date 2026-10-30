@@ -1326,6 +1326,9 @@ components:
         previousPath:
           type: string
           description: Path of the entry being edited. Absent when adding.
+        account:
+          type: string
+          description: Claude config directory for this Directory's agents. Empty = default account.
 
     RemoveDirectory:
       description: >-
@@ -1457,6 +1460,11 @@ components:
           type: string
         source:
           $ref: '#/components/schemas/DirectorySource'
+        account:
+          type: string
+          description: |
+            Claude account for agents launched here: its config directory
+            (CLAUDE_CONFIG_DIR). Absent = the default account (~/.claude).
 
     DirectorySource:
       description: |
