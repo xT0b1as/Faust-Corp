@@ -47,6 +47,10 @@ interface ToolOverlayProps {
   zoom: number;
   panRef: React.RefObject<{ x: number; y: number }>;
   onCloseAgent: (id: number) => void;
+  /** Type a command into the agent's terminal (compact, restart with handover). */
+  onAgentCommand: (id: number, command: 'compact' | 'restartWithHandover') => void;
+  /** Open the new-chat modal for the agent's Directory. */
+  onNewChatHere: (id: number) => void;
   alwaysShowOverlay: boolean;
 }
 
@@ -120,6 +124,8 @@ export function ToolOverlay({
   zoom,
   panRef,
   onCloseAgent,
+  onAgentCommand,
+  onNewChatHere,
   alwaysShowOverlay,
 }: ToolOverlayProps) {
   const [, setTick] = useState(0);
@@ -370,6 +376,39 @@ export function ToolOverlay({
                       background: getFuelColor(contextRatio),
                     }}
                   />
+                </div>
+              )}
+              {isSelected && !isSub && ch.leadAgentId === undefined && (
+                <div className="flex gap-2 mt-2" data-testid="agent-actions">
+                  {(
+                    [
+                      ['Neuer Chat', 'Neuer Chat im selben Projekt', () => onNewChatHere(id)],
+                      [
+                        'Kompakt',
+                        'Kontext kompaktieren (/compact)',
+                        () => onAgentCommand(id, 'compact'),
+                      ],
+                      [
+                        'Neustart',
+                        'Übergabe schreiben, Kontext leeren, mit Übergabe weitermachen',
+                        () => onAgentCommand(id, 'restartWithHandover'),
+                      ],
+                    ] as const
+                  ).map(([text, title, action]) => (
+                    <Button
+                      key={text}
+                      variant="default"
+                      size="sm"
+                      title={title}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        action();
+                      }}
+                      className="text-2xs! py-0! px-4!"
+                    >
+                      {text}
+                    </Button>
+                  ))}
                 </div>
               )}
             </div>

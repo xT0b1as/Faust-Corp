@@ -21,6 +21,7 @@ import {
 import { collectDirectorySuggestions } from './directorySuggestions.js';
 import { hostDirectory } from './hostDirectory.js';
 import { readLayoutFromFile, writeLayoutToFile } from './layoutPersistence.js';
+import { type AgentCommand, runAgentCommand } from './projects/agentCommands.js';
 import { startProjectLead } from './projects/projectLead.js';
 import type { ConsentEffects } from './providers/hook/consentExecutor.js';
 import { applyConsentChoice } from './providers/hook/consentExecutor.js';
@@ -361,6 +362,15 @@ export function handleClientMessage(
           collectDirectorySuggestions(claudeProvider, shownHostDirectoriesFor(ctx)),
       });
       break;
+
+    case 'agentCommand': {
+      const id = msg.id as number;
+      const reason = ctx.ptyManager
+        ? runAgentCommand({ store, ptyManager: ctx.ptyManager }, id, msg.command as AgentCommand)
+        : 'Das Terminal ist nicht verfügbar.';
+      if (reason) send({ type: 'agentCommandRejected', id, reason });
+      break;
+    }
 
     case 'startProjectLead': {
       const directoryPath = msg.directoryPath as string;

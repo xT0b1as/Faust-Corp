@@ -44,6 +44,7 @@ export type ServerMessage =
   | DirectoryRejected
   | DirectorySuggestions
   | ProjectLeadRejected
+  | AgentCommandRejected
   | TerminalAvailability
   | TerminalSessionOpened
   | TerminalSessionClosed
@@ -77,6 +78,7 @@ export type ClientMessage =
   | RemoveDirectory
   | RequestDirectorySuggestions
   | StartProjectLead
+  | AgentCommand
   | RequestDiagnostics;
 
 export interface ProviderCapabilities {
@@ -364,6 +366,12 @@ export interface ProjectLeadRejected {
   reason: string;
 }
 
+export interface AgentCommandRejected {
+  type: 'agentCommandRejected';
+  id: number;
+  reason: string;
+}
+
 export interface TerminalAvailability {
   type: 'terminalAvailability';
   available: boolean;
@@ -528,6 +536,14 @@ export interface StartProjectLead {
   type: 'startProjectLead';
   directoryPath: string;
 }
+
+export interface AgentCommand {
+  type: 'agentCommand';
+  id: number;
+  command: AnonymousSchema_282;
+}
+
+export type AnonymousSchema_282 = 'compact' | 'restartWithHandover';
 
 export interface RequestDiagnostics {
   type: 'requestDiagnostics';

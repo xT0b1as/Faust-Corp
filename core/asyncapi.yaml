@@ -123,6 +123,7 @@ components:
         - $ref: '#/components/schemas/DirectorySuggestions'
         # Projects (project lead + memory folder)
         - $ref: '#/components/schemas/ProjectLeadRejected'
+        - $ref: '#/components/schemas/AgentCommandRejected'
         # Terminal (standalone embedded terminal control plane)
         - $ref: '#/components/schemas/TerminalAvailability'
         - $ref: '#/components/schemas/TerminalSessionOpened'
@@ -161,6 +162,7 @@ components:
         - $ref: '#/components/schemas/RequestDirectorySuggestions'
         # Projects
         - $ref: '#/components/schemas/StartProjectLead'
+        - $ref: '#/components/schemas/AgentCommand'
         - $ref: '#/components/schemas/RequestDiagnostics'
       discriminator: type
 
@@ -893,6 +895,19 @@ components:
           type: string
           description: Human-readable cause.
 
+    AgentCommandRejected:
+      description: An `agentCommand` could not start. Sent to the requesting client only.
+      type: object
+      additionalProperties: false
+      required: [type, id, reason]
+      properties:
+        type:
+          const: agentCommandRejected
+        id:
+          type: integer
+        reason:
+          type: string
+
     DirectorySuggestions:
       description: |
         Candidate paths for the Directory modal, recovered from the working
@@ -1351,6 +1366,24 @@ components:
           const: startProjectLead
         directoryPath:
           type: string
+
+    AgentCommand:
+      description: |
+        Type a command into an agent's terminal on the user's behalf. `compact`
+        sends /compact. `restartWithHandover` asks the agent to write a handover
+        to .faust/uebergaben/, waits for its turn to end, sends /clear, then tells
+        the fresh session to read the handover back.
+      type: object
+      additionalProperties: false
+      required: [type, id, command]
+      properties:
+        type:
+          const: agentCommand
+        id:
+          type: integer
+        command:
+          type: string
+          enum: [compact, restartWithHandover]
 
     SetShowAreas:
       description: Toggle the Areas overlay (translucent rendering on top of the office).

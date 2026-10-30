@@ -748,6 +748,8 @@ export function useExtensionMessages(
           reason: msg.reason as string,
           seq: (prev?.seq ?? 0) + 1,
         }));
+      } else if (msg.type === 'agentCommandRejected') {
+        window.alert(msg.reason as string);
       } else if (msg.type === 'projectLeadRejected') {
         // Rare (unknown Directory, unwritable folder, no terminal) and needs no
         // follow-up UI: a plain alert is enough to say why nothing happened.

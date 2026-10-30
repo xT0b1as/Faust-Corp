@@ -178,6 +178,14 @@ function App() {
   }, []);
   // The Directory the new-chat modal is open for (launch with name + task).
   const [newChatDirectory, setNewChatDirectory] = useState<Directory | null>(null);
+  const handleNewChatHere = useCallback(
+    (id: number) => {
+      const name = getOfficeState().characters.get(id)?.directoryName;
+      const directory = directories.find((d) => d.name === name);
+      if (directory) setNewChatDirectory(directory);
+    },
+    [directories],
+  );
   const mobileShell = useMobileShell({
     getOfficeState,
     terminalAgentIds,
@@ -343,6 +351,12 @@ function App() {
   const handleCloseAgent = useCallback((id: number) => {
     transport.send({ type: 'closeAgent', id });
   }, []);
+  const handleAgentCommand = useCallback(
+    (id: number, command: 'compact' | 'restartWithHandover') => {
+      transport.send({ type: 'agentCommand', id, command });
+    },
+    [],
+  );
 
   const { reveal: revealTerminal } = terminalDrawer;
   const { showTerminal: showMobileTerminal } = mobileShell;
@@ -590,6 +604,8 @@ function App() {
             zoom={editor.zoom}
             panRef={editor.panRef}
             onCloseAgent={handleCloseAgent}
+            onAgentCommand={handleAgentCommand}
+            onNewChatHere={handleNewChatHere}
             alwaysShowOverlay={alwaysShowOverlay}
           />
         </>
