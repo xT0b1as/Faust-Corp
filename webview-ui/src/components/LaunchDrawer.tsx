@@ -18,6 +18,8 @@ interface LaunchDrawerProps {
   onEditDirectory: (directory: Directory) => void;
   /** Open the new-chat modal for this Directory (launch with a name and task). */
   onLaunchWithTask: (directory: Directory) => void;
+  /** Bring up this Directory's project lead (sets up its memory folder first). */
+  onStartLead: (directory: Directory) => void;
   className?: string;
 }
 
@@ -47,6 +49,7 @@ export function LaunchDrawer({
   onAddDirectory,
   onEditDirectory,
   onLaunchWithTask,
+  onStartLead,
   className = '',
 }: LaunchDrawerProps) {
   return (
@@ -72,6 +75,7 @@ export function LaunchDrawer({
               onSelect={onSelect}
               onEditDirectory={onEditDirectory}
               onLaunchWithTask={onLaunchWithTask}
+              onStartLead={onStartLead}
             />
           ))}
         </div>
@@ -85,6 +89,7 @@ interface DirectoryRowProps {
   onSelect: (directory: Directory) => void;
   onEditDirectory: (directory: Directory) => void;
   onLaunchWithTask: (directory: Directory) => void;
+  onStartLead: (directory: Directory) => void;
 }
 
 function DirectoryRow({
@@ -92,6 +97,7 @@ function DirectoryRow({
   onSelect,
   onEditDirectory,
   onLaunchWithTask,
+  onStartLead,
 }: DirectoryRowProps) {
   const editable = directory.source === 'user';
   const longPressTimer = useRef<number | undefined>(undefined);
@@ -169,8 +175,18 @@ function DirectoryRow({
           )}
         </span>
       </DropdownItem>
-      {/* Always visible, touch included: launching with a task is a primary
-          action, not an edit affordance. */}
+      {/* Always visible, touch included: these are primary actions, not edit
+          affordances. */}
+      <button
+        onClick={() => onStartLead(directory)}
+        aria-label={`Projektleiter für ${directory.name}`}
+        title="Projektleiter (richtet das Projekt beim ersten Mal ein)"
+        className="shrink-0 self-stretch flex items-center px-8 bg-transparent border-none rounded-none cursor-pointer text-sm leading-none text-text-muted hover:text-text"
+      >
+        <span className="material-symbols-sharp text-[12px]" aria-hidden="true">
+          supervisor_account
+        </span>
+      </button>
       <button
         onClick={() => onLaunchWithTask(directory)}
         aria-label={`Neuer Chat mit Auftrag in ${directory.name}`}

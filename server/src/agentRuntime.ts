@@ -509,6 +509,7 @@ export class AgentRuntime {
         backgroundAgentToolIds: new Set(p.backgroundAgentToolIds ?? []),
         directoryName: p.directoryName ?? p.folderName,
         label: p.label,
+        projectRole: p.projectRole,
         teamName: p.teamName,
         agentName: p.agentName,
         isTeamLead: p.isTeamLead,

@@ -748,6 +748,11 @@ export function useExtensionMessages(
           reason: msg.reason as string,
           seq: (prev?.seq ?? 0) + 1,
         }));
+      } else if (msg.type === 'projectLeadRejected') {
+        // Rare (unknown Directory, unwritable folder, no terminal) and needs no
+        // follow-up UI: a plain alert is enough to say why nothing happened.
+        console.warn(`[Webview] Project lead: ${msg.reason as string}`);
+        window.alert(`Projektleiter konnte nicht gestartet werden: ${msg.reason as string}`);
       } else if (msg.type === 'settingsLoaded') {
         const soundOn = msg.soundEnabled as boolean;
         setSoundEnabled(soundOn);

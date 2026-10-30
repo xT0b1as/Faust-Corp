@@ -173,6 +173,9 @@ function App() {
       label: task?.label,
     });
   }, []);
+  const startProjectLead = useCallback((directory: Directory) => {
+    transport.send({ type: 'startProjectLead', directoryPath: directory.path });
+  }, []);
   // The Directory the new-chat modal is open for (launch with name + task).
   const [newChatDirectory, setNewChatDirectory] = useState<Directory | null>(null);
   const mobileShell = useMobileShell({
@@ -649,6 +652,7 @@ function App() {
           onAddDirectory={directoryEditor.add}
           onEditDirectory={directoryEditor.edit}
           onLaunchWithTask={setNewChatDirectory}
+          onStartLead={startProjectLead}
           terminalAvailable={terminalAvailable}
           terminalUnavailableReason={terminalUnavailableReason}
         />
@@ -727,6 +731,7 @@ function App() {
           onAddDirectory={directoryEditor.add}
           onEditDirectory={directoryEditor.edit}
           onLaunchWithTask={setNewChatDirectory}
+          onStartLead={startProjectLead}
           onCloseAgent={handleCloseAgent}
           keyboardOpen={keyboard.keyboardOpen}
         />

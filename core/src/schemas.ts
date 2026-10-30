@@ -25,6 +25,8 @@ export interface PersistedAgent {
   folderName?: string;
   /** Per-agent label (see agentCreated.label). */
   label?: string;
+  /** 'lead' for a project's lead. */
+  projectRole?: 'lead';
   teamName?: string;
   agentName?: string;
   isTeamLead?: boolean;

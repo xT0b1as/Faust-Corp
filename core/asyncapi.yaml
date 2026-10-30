@@ -121,6 +121,8 @@ components:
         - $ref: '#/components/schemas/DirectorySaved'
         - $ref: '#/components/schemas/DirectoryRejected'
         - $ref: '#/components/schemas/DirectorySuggestions'
+        # Projects (project lead + memory folder)
+        - $ref: '#/components/schemas/ProjectLeadRejected'
         # Terminal (standalone embedded terminal control plane)
         - $ref: '#/components/schemas/TerminalAvailability'
         - $ref: '#/components/schemas/TerminalSessionOpened'
@@ -157,6 +159,8 @@ components:
         - $ref: '#/components/schemas/SaveDirectory'
         - $ref: '#/components/schemas/RemoveDirectory'
         - $ref: '#/components/schemas/RequestDirectorySuggestions'
+        # Projects
+        - $ref: '#/components/schemas/StartProjectLead'
         - $ref: '#/components/schemas/RequestDiagnostics'
       discriminator: type
 
@@ -872,6 +876,23 @@ components:
           type: string
           description: Human-readable cause, shown inline in the Directory modal.
 
+    ProjectLeadRejected:
+      description: |
+        A `startProjectLead` could not be carried out (unknown Directory, the
+        memory folder could not be written, or no terminal). Sent point-to-point
+        to the requesting client.
+      type: object
+      additionalProperties: false
+      required: [type, directoryPath, reason]
+      properties:
+        type:
+          const: projectLeadRejected
+        directoryPath:
+          type: string
+        reason:
+          type: string
+          description: Human-readable cause.
+
     DirectorySuggestions:
       description: |
         Candidate paths for the Directory modal, recovered from the working
@@ -1315,6 +1336,21 @@ components:
       properties:
         type:
           const: requestDirectorySuggestions
+
+    StartProjectLead:
+      description: |
+        Bring up the project lead of a Directory: set up the project's memory
+        folder (`.faust/`, plus an import block in CLAUDE.md) if it is missing,
+        then launch the lead. When the lead is already in the office it is
+        selected instead (`agentSelected`) and nothing new is launched.
+      type: object
+      additionalProperties: false
+      required: [type, directoryPath]
+      properties:
+        type:
+          const: startProjectLead
+        directoryPath:
+          type: string
 
     SetShowAreas:
       description: Toggle the Areas overlay (translucent rendering on top of the office).

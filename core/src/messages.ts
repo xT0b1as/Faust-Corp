@@ -43,6 +43,7 @@ export type ServerMessage =
   | DirectorySaved
   | DirectoryRejected
   | DirectorySuggestions
+  | ProjectLeadRejected
   | TerminalAvailability
   | TerminalSessionOpened
   | TerminalSessionClosed
@@ -75,6 +76,7 @@ export type ClientMessage =
   | SaveDirectory
   | RemoveDirectory
   | RequestDirectorySuggestions
+  | StartProjectLead
   | RequestDiagnostics;
 
 export interface ProviderCapabilities {
@@ -356,6 +358,12 @@ export interface DirectorySuggestions {
   paths: string[];
 }
 
+export interface ProjectLeadRejected {
+  type: 'projectLeadRejected';
+  directoryPath: string;
+  reason: string;
+}
+
 export interface TerminalAvailability {
   type: 'terminalAvailability';
   available: boolean;
@@ -514,6 +522,11 @@ export interface RemoveDirectory {
 
 export interface RequestDirectorySuggestions {
   type: 'requestDirectorySuggestions';
+}
+
+export interface StartProjectLead {
+  type: 'startProjectLead';
+  directoryPath: string;
 }
 
 export interface RequestDiagnostics {

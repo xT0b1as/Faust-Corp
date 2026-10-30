@@ -17,6 +17,7 @@ interface BottomToolbarProps {
   /** Pencil on a user-defined row — opens the modal pre-filled. */
   onEditDirectory: (directory: Directory) => void;
   onLaunchWithTask: (directory: Directory) => void;
+  onStartLead: (directory: Directory) => void;
   /** Standalone: server has a working PTY, so agents can be launched here. */
   terminalAvailable: boolean;
   /** Why the terminal is off (shown on the disabled button's tooltip). */
@@ -32,6 +33,7 @@ export function BottomToolbar({
   onAddDirectory,
   onEditDirectory,
   onLaunchWithTask,
+  onStartLead,
   terminalAvailable,
   terminalUnavailableReason,
 }: BottomToolbarProps) {
@@ -113,6 +115,10 @@ export function BottomToolbar({
             onLaunchWithTask={(directory) => {
               setIsDrawerOpen(false);
               onLaunchWithTask(directory);
+            }}
+            onStartLead={(directory) => {
+              setIsDrawerOpen(false);
+              onStartLead(directory);
             }}
           />
         </div>

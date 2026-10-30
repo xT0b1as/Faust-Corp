@@ -46,6 +46,7 @@ export interface LaunchStandaloneAgentOptions {
   /** Name shown for the agent. Defaults to a numbered Directory name when the
    *  Directory already has agents, so parallel sessions stay apart. */
   label?: string;
+  projectRole?: 'lead';
   cols?: number;
   rows?: number;
 }
@@ -126,6 +127,7 @@ export function launchStandaloneAgent(
     // for a cwd that is no Directory at all.
     directoryName,
     label: options.label?.trim() || defaultLabel(store, directoryName),
+    projectRole: options.projectRole,
     providerId: provider.id,
   });
 

@@ -21,6 +21,7 @@ import {
 import { collectDirectorySuggestions } from './directorySuggestions.js';
 import { hostDirectory } from './hostDirectory.js';
 import { readLayoutFromFile, writeLayoutToFile } from './layoutPersistence.js';
+import { startProjectLead } from './projects/projectLead.js';
 import type { ConsentEffects } from './providers/hook/consentExecutor.js';
 import { applyConsentChoice } from './providers/hook/consentExecutor.js';
 import { hooksConsentRequest } from './providers/hook/consentGate.js';
@@ -360,6 +361,36 @@ export function handleClientMessage(
           collectDirectorySuggestions(claudeProvider, shownHostDirectoriesFor(ctx)),
       });
       break;
+
+    case 'startProjectLead': {
+      const directoryPath = msg.directoryPath as string;
+      if (!runtime || !ctx.ptyManager) {
+        send({
+          type: 'projectLeadRejected',
+          directoryPath,
+          reason: 'Das Terminal ist nicht verfügbar.',
+        });
+        break;
+      }
+      const result = startProjectLead(
+        {
+          store,
+          runtime,
+          ptyManager: ctx.ptyManager,
+          provider: claudeProvider,
+          hostDirectories: hostDirectoriesFor(ctx),
+          bypassPermissions: adapter?.getSetting(KEY_BYPASS_PERMISSIONS, false) ?? false,
+        },
+        directoryPath,
+      );
+      if (!result.ok) {
+        send({ type: 'projectLeadRejected', directoryPath, reason: result.reason });
+      } else if (!result.launched) {
+        // Already in the office: point the asking client at it.
+        send({ type: 'agentSelected', id: result.agentId });
+      }
+      break;
+    }
 
     default:
       // focusAgent is handled entirely client-side in standalone (it focuses the

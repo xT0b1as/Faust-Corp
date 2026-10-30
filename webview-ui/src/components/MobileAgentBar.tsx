@@ -33,6 +33,7 @@ interface MobileAgentBarProps {
   /** Pencil on a user-defined row — opens the modal pre-filled. */
   onEditDirectory: (directory: Directory) => void;
   onLaunchWithTask: (directory: Directory) => void;
+  onStartLead: (directory: Directory) => void;
   /** False when the server has no working PTY — the + card shows disabled. */
   canLaunch: boolean;
   launchUnavailableReason: string | null;
@@ -90,6 +91,7 @@ export function MobileAgentBar({
   onAddDirectory,
   onEditDirectory,
   onLaunchWithTask,
+  onStartLead,
   canLaunch,
   launchUnavailableReason,
   getAppearance,
@@ -316,6 +318,10 @@ export function MobileAgentBar({
             onLaunchWithTask={(directory) => {
               setIsLaunchDrawerOpen(false);
               onLaunchWithTask(directory);
+            }}
+            onStartLead={(directory) => {
+              setIsLaunchDrawerOpen(false);
+              onStartLead(directory);
             }}
           />
         </div>
