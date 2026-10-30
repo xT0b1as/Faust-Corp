@@ -78,8 +78,8 @@ Claude muss auf dem Pi nicht installiert sein.
 Alles Folgende findest du unter "+ Agent":
 
 - Sekretär Lynkeus: Er hat den Überblick über alle Projekte, gibt Lageberichte und reicht Aufträge an die Projektleiter weiter. Er läuft auf dem ersten verbundenen Rechner.
-- - Abteilung: Du gibst Name, Ordner, Rechner und Konto an. Das Büro baut einen Raum mit zwei Arbeitsplätzen an und setzt Wagner als Projektleiter ein.
-- - Directory: Hier legst du einen Ordner ohne eigenen Raum an. Das Feld "Claude Konto" nimmt einen Konfigurationsordner wie `~/.claude-arbeit` für einen zweiten Account. Einmal anmelden geht mit `CLAUDE_CONFIG_DIR=~/.claude-arbeit claude` und dann `/login`.
+- `+ Abteilung`: Du gibst Name, Ordner, Rechner und Konto an. Das Büro baut einen Raum mit zwei Arbeitsplätzen an und setzt Wagner als Projektleiter ein.
+- `+ Directory`: Hier legst du einen Ordner ohne eigenen Raum an. Das Feld "Claude Konto" nimmt einen Konfigurationsordner wie `~/.claude-arbeit` für einen zweiten Account. Einmal anmelden geht mit `CLAUDE_CONFIG_DIR=~/.claude-arbeit claude` und dann `/login`. Hast du den Hooks zugestimmt, trägt das Büro sie auch in die `settings.json` dieses Kontos ein (mit einmaliger Sicherung) und entfernt sie dort wieder, wenn du die Hooks ausschaltest.
 - In jeder Ordnerzeile gibt es drei Knöpfe:
   - Projektleiter: richtet beim ersten Mal `.faust/` ein und startet Wagner.
   - Neuer Chat mit Auftrag: startet einen Chat mit Name und Auftrag.
@@ -89,7 +89,10 @@ An einem ausgewählten Agenten:
 
 - Neuer Chat: startet einen weiteren Chat im selben Projekt.
 - Kompakt: schickt `/compact`.
+- Besprechung (nur bei Wagner): holt die Chats des Projekts zu ihm, er fasst den Stand zusammen und aktualisiert `stand.md`.
 - Neustart: Der Agent schreibt eine Übergabe, wird geleert und liest die Übergabe wieder ein.
+
+Übersicht (unten in der Mitte, mit Zahl offener Freigaben): Aufgaben aller Projekte mit Freigeben und Ablehnen, dazu der Tokenverbrauch von heute pro Konto.
 
 Laufen (unten in der Mitte): Damit bewegst du dich mit deiner eigenen Figur durchs Büro.
 
@@ -119,6 +122,5 @@ Er darf Chats allein starten und beenden. Pushes und alles, was nach außen geht
 
 ## Bekannte Grenzen
 
-- Sessions eines zweiten Kontos laufen ohne Hooks, ihr Status kommt aus den Session Dateien und ist etwas langsamer.
 - Ohne `--public-url` sieht der Sekretär im Hub nur den Rechner, auf dem er läuft.
 - Getestet ist alles mit Unit Tests und im Browser mit einem Platzhalter statt des echten `claude`. Der erste echte Durchlauf mit Claude Code steht noch aus. Achte dabei besonders auf "Neustart" (Eingaben ins Terminal) und auf die Freigabe der MCP Werkzeuge.

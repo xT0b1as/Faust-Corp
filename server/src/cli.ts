@@ -33,7 +33,9 @@ import {
   WILDCARD_HOSTNAMES,
 } from './constants.js';
 import { FileStateAdapter } from './fileStateAdapter.js';
+import { hostDirectory } from './hostDirectory.js';
 import { type HubNodeConfig, parseNodeArg } from './hub/hubNodes.js';
+import { syncAccountHooks } from './projects/accountHooks.js';
 import { Notifier } from './projects/notifier.js';
 import { claudeProvider, copyHookScript, hookProviderById } from './providers/index.js';
 import { PixelAgentsServer } from './server.js';
@@ -379,6 +381,7 @@ async function main(): Promise<void> {
           console.error(`[Pixel Agents] ${err instanceof Error ? err.message : String(err)}`);
         }
       }
+      if (provider.id === claudeProvider.id) await syncAccountHooks([hostDirectory()], enabled);
     };
 
     // onReloadAssets side effect: re-run the shared loaders (bundled + external
@@ -482,6 +485,9 @@ async function main(): Promise<void> {
         '[Pixel Agents] Hooks disabled — enable "Instant Detection (Hooks)" in the UI settings to install them.',
       );
     }
+
+    // Extra Claude accounts named on Directories follow the same hooks choice.
+    await syncAccountHooks([hostDirectory()]);
 
     // Start scanning for external sessions (Claude running in user's terminal)
     const cwd = process.cwd();

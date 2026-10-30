@@ -21,6 +21,7 @@ import {
 import { collectDirectorySuggestions } from './directorySuggestions.js';
 import { hostDirectory } from './hostDirectory.js';
 import { readLayoutFromFile, writeLayoutToFile } from './layoutPersistence.js';
+import { syncAccountHooks } from './projects/accountHooks.js';
 import { type AgentCommand, runAgentCommand } from './projects/agentCommands.js';
 import { startProjectLead } from './projects/projectLead.js';
 import { messageProjectLead, secretaryDir, startSecretary } from './projects/secretary.js';
@@ -366,6 +367,11 @@ export function handleClientMessage(
         suggestions: () =>
           collectDirectorySuggestions(claudeProvider, shownHostDirectoriesFor(ctx)),
       });
+      // A Directory naming a Claude account brings that account's hooks in
+      // line with the user's choice (installed only under granted consent).
+      if (msg.type === 'saveDirectory' && typeof msg.account === 'string' && msg.account.trim()) {
+        void syncAccountHooks(hostDirectoriesFor(ctx));
+      }
       break;
 
     case 'agentCommand': {
