@@ -141,6 +141,12 @@ describe('project lead MCP tools', () => {
     const workerArgs = spawned[1];
     expect(workerArgs[workerArgs.indexOf('--') + 1]).toBe('Baue den Login');
 
+    // A work chat wears its lead's colours and knows its lead.
+    const worker = [...store].find(([, a]) => a.label === 'Homunculus 1')![1];
+    expect(worker.palette).toBe(store.get(leadId)!.palette);
+    expect(worker.hueShift).toBe(store.get(leadId)!.hueShift);
+    expect(worker.projectLeadId).toBe(leadId);
+
     await tool(leadId, 'chat_starten', { auftrag: 'Teste', name: 'Tester' });
     const listed = await tool(leadId, 'chats_auflisten');
     expect(listed.content[0].text).toContain('Projektleiter');

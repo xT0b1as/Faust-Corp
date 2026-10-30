@@ -101,6 +101,7 @@ export interface AgentCreated {
   directoryName?: string;
   label?: string;
   node?: string;
+  projectLeadId?: number;
   isExternal?: boolean;
   palette?: number;
   hueShift?: number;
@@ -596,7 +597,7 @@ export interface AgentCommand {
   command: AgentCommandKind;
 }
 
-export type AgentCommandKind = 'compact' | 'restartWithHandover';
+export type AgentCommandKind = 'compact' | 'restartWithHandover' | 'meeting';
 
 export interface StartSecretary {
   type: 'startSecretary';

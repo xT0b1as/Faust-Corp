@@ -426,7 +426,17 @@ export function useExtensionMessages(
         } else {
           const palette = msg.palette as number | undefined;
           const hueShift = msg.hueShift as number | undefined;
-          os.addAgent(id, palette, hueShift, undefined, undefined, directoryName);
+          // A lead's work chat sits near its lead (it shares the lead's colours).
+          const nearLead = msg.projectLeadId as number | undefined;
+          os.addAgent(
+            id,
+            palette,
+            hueShift,
+            undefined,
+            undefined,
+            directoryName,
+            nearLead !== undefined && os.characters.has(nearLead) ? nearLead : undefined,
+          );
           noteDirectoryName(directoryName);
           if (isHeadlessAgent(msg.isExternal as boolean | undefined)) {
             os.setHeadless(id, true);

@@ -47,6 +47,9 @@ export interface LaunchStandaloneAgentOptions {
    *  Directory already has agents, so parallel sessions stay apart. */
   label?: string;
   projectRole?: 'lead' | 'secretary';
+  /** A work chat started by a project lead: wears the lead's colours and is
+   *  seated near it. */
+  projectLeadId?: number;
   /** MCP config for this session, built from the id the agent will get. */
   mcpConfigFor?: (agentId: number) => string | undefined;
   allowedTools?: string[];
@@ -95,6 +98,7 @@ export function launchStandaloneAgent(
   const projectDir = dirs[0];
 
   const directoryName = directoryNameForLaunch(cwd, [hostDirectory()]) ?? directoryNameFor(cwd);
+  const lead = options.projectLeadId !== undefined ? store.get(options.projectLeadId) : undefined;
   const id = store.nextAgentId.current++;
 
   let session;
@@ -137,6 +141,9 @@ export function launchStandaloneAgent(
     directoryName,
     label: options.label?.trim() || defaultLabel(store, directoryName),
     projectRole: options.projectRole,
+    projectLeadId: options.projectLeadId,
+    palette: lead?.palette,
+    hueShift: lead?.hueShift,
     providerId: provider.id,
   });
 

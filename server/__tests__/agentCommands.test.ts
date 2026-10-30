@@ -84,6 +84,16 @@ describe('runAgentCommand', () => {
     expect(pty.writes[5]).toBe('\r');
   });
 
+  it('asks only a lead to hold a meeting', async () => {
+    addAgent(1, 'lead');
+    expect(runAgentCommand({ store, ptyManager }, 1, 'meeting')).toBeNull();
+    await vi.advanceTimersByTimeAsync(AGENT_COMMAND_SUBMIT_DELAY_MS);
+    expect(pty.writes[0]).toContain('chats_auflisten');
+    expect(pty.writes[1]).toBe('\r');
+    addAgent(2);
+    expect(runAgentCommand({ store, ptyManager }, 2, 'meeting')).not.toBeNull();
+  });
+
   it('refuses an agent without a terminal and one that is mid-tool', () => {
     expect(runAgentCommand({ store, ptyManager }, 9, 'compact')).not.toBeNull();
     addAgent(2);

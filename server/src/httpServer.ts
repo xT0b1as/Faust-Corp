@@ -308,6 +308,7 @@ function registerWebSocketRoute(
         id,
         directoryName: agent.directoryName,
         label: agent.label,
+        projectLeadId: agent.projectLeadId,
         isExternal: agent.isExternal || undefined,
         isTeammate: agent.leadAgentId !== undefined || undefined,
         teammateName: agent.agentName,

@@ -581,3 +581,5 @@ export const PLAYER_TALK_RANGE_TILES = 2;
 export const PLAYER_NEAR_POLL_MS = 250;
 /** How often the open overview refreshes the task list (4x slower in the background, for the badge). */
 export const OVERVIEW_REFRESH_MS = 10_000;
+/** Label prefix of a project lead's character ("Wagner: <Directory>"). */
+export const LEAD_LABEL_PREFIX = 'Wagner:';

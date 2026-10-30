@@ -411,8 +411,12 @@ export class OfficeState {
   }
 
   /** Closest walkable tile to (col,row) not occupied by another character, or null. */
-  private closestFreeWalkableTile(col: number, row: number): { col: number; row: number } | null {
-    const occupied = new Set<string>();
+  private closestFreeWalkableTile(
+    col: number,
+    row: number,
+    reserved: ReadonlySet<string> = new Set(),
+  ): { col: number; row: number } | null {
+    const occupied = new Set<string>(reserved);
     for (const ch of this.characters.values()) {
       occupied.add(`${ch.tileCol},${ch.tileRow}`);
     }
@@ -809,6 +813,20 @@ export class OfficeState {
     ch.frame = 0;
     ch.frameTimer = 0;
     return true;
+  }
+
+  /** A meeting: walk these agents to the free tiles closest to `hostId`. */
+  gatherAround(hostId: number, ids: number[]): void {
+    const host = this.characters.get(hostId);
+    if (!host) return;
+    // Tiles already promised to an earlier walker in this meeting.
+    const reserved = new Set<string>();
+    for (const id of ids) {
+      const spot = this.closestFreeWalkableTile(host.tileCol, host.tileRow, reserved);
+      if (!spot) break;
+      reserved.add(`${spot.col},${spot.row}`);
+      this.walkToTile(id, spot.col, spot.row);
+    }
   }
 
   /** Create a sub-agent character with the parent's palette. Returns the sub-agent ID. */
@@ -1233,6 +1251,9 @@ export class OfficeState {
       if (effect === 'despawned') {
         this.player = null;
       } else if (effect === 'none') {
+        // Set before the FSM runs too: its first idle tick could otherwise
+        // still pick a random stroll.
+        this.player.wanderTimer = Number.POSITIVE_INFINITY;
         updateCharacter(
           this.player,
           dt,

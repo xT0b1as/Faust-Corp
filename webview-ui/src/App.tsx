@@ -419,8 +419,17 @@ function App() {
     transport.send({ type: 'closeAgent', id });
   }, []);
   const handleAgentCommand = useCallback(
-    (id: number, command: 'compact' | 'restartWithHandover') => {
+    (id: number, command: 'compact' | 'restartWithHandover' | 'meeting') => {
       transport.send({ type: 'agentCommand', id, command });
+      if (command === 'meeting') {
+        // Gather the project's other agents around their lead.
+        const os = getOfficeState();
+        const project = os.characters.get(id)?.directoryName;
+        const members = [...os.characters.values()]
+          .filter((c) => c.id !== id && !c.isSubagent && c.directoryName === project)
+          .map((c) => c.id);
+        os.gatherAround(id, members);
+      }
     },
     [],
   );

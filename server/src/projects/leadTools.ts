@@ -141,6 +141,7 @@ export function callLeadTool(
         directoryPath: directory.path,
         prompt: auftrag,
         label,
+        projectLeadId: leadId,
         bypassPermissions: deps.bypassPermissions,
       });
       if (id === null) return { text: 'Das Terminal ist nicht verfügbar.', isError: true };

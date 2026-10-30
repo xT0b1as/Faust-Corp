@@ -64,3 +64,23 @@ test('walks to a tapped tile and finds agents within talking range', () => {
   settle(os);
   assert.equal(os.player, null);
 });
+
+test('a meeting walks the project agents to free tiles around their lead', () => {
+  const os = new OfficeState(floorLayout(9, 7));
+  for (const id of [1, 2, 3]) {
+    os.addAgent(id, 0, 0, undefined, true);
+    os.setAgentActive(id, true);
+  }
+  os.gatherAround(1, [2, 3]);
+  settle(os, 10);
+  const lead = os.characters.get(1)!;
+  const spots = [2, 3].map((id) => os.characters.get(id)!);
+  for (const ch of spots) {
+    assert.ok(Math.abs(ch.tileCol - lead.tileCol) + Math.abs(ch.tileRow - lead.tileRow) <= 2);
+  }
+  assert.notDeepEqual(
+    [spots[0].tileCol, spots[0].tileRow],
+    [spots[1].tileCol, spots[1].tileRow],
+    'each gets its own tile',
+  );
+});

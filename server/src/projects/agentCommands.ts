@@ -15,7 +15,7 @@ import {
 import type { PtySessionManager } from '../terminal/ptySessionManager.js';
 import { FAUST_DIR, leadPrompt } from './templates.js';
 
-export type AgentCommand = 'compact' | 'restartWithHandover';
+export type AgentCommand = 'compact' | 'restartWithHandover' | 'meeting';
 
 export interface AgentCommandDeps {
   store: AgentStateStore;
@@ -30,6 +30,11 @@ const HANDOVER_PROMPT =
   `nach ${FAUST_DIR}/uebergaben/ (Dateiname JJJJ-MM-TT-HHMM-<dein name>.md): was erledigt ist, ` +
   `was offen ist, was der nächste Chat wissen muss. Bist du der Projektleiter, aktualisiere ` +
   `zusätzlich ${FAUST_DIR}/stand.md. Antworte danach nur mit: Übergabe fertig.`;
+
+const MEETING_PROMPT =
+  `Besprechung: Hole mit chats_auflisten den Stand aller Chats dieses Projekts, frage bei ` +
+  `Bedarf mit chat_nachricht nach und fasse mir in wenigen Sätzen zusammen, was läuft, was ` +
+  `fertig ist und was du von mir brauchst. Aktualisiere danach ${FAUST_DIR}/stand.md.`;
 
 const RESUME_PROMPT =
   `Du wurdest neu gestartet. Lies die neueste Übergabe in ${FAUST_DIR}/uebergaben/ ` +
@@ -94,6 +99,15 @@ export function runAgentCommand(
   if (busy.has(id)) return null;
   if (agent.activeToolIds.size > 0) {
     return 'Der Agent arbeitet gerade. Warte, bis er fertig ist.';
+  }
+
+  if (command === 'meeting') {
+    if (agent.projectRole !== 'lead') return 'Besprechungen hält nur ein Projektleiter.';
+    busy.add(id);
+    void submitToTerminal(deps.ptyManager, id, MEETING_PROMPT)
+      .catch((err) => console.warn(`[Pixel Agents] Agent ${id}: meeting failed: ${String(err)}`))
+      .finally(() => busy.delete(id));
+    return null;
   }
 
   if (command === 'compact') {

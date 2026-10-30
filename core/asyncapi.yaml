@@ -218,6 +218,11 @@ components:
         node:
           type: string
           description: Hub mode only. Name of the machine (node) the agent runs on.
+        projectLeadId:
+          type: integer
+          description: |
+            Set on a work chat a project lead started: the lead's id. The
+            character is seated near its lead (it already wears its colours).
         isExternal:
           type: boolean
         palette:
@@ -1574,7 +1579,7 @@ components:
     AgentCommandKind:
       description: A command the office can type into an agent's terminal.
       type: string
-      enum: [compact, restartWithHandover]
+      enum: [compact, restartWithHandover, meeting]
 
     SetShowAreas:
       description: Toggle the Areas overlay (translucent rendering on top of the office).

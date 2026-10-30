@@ -27,6 +27,8 @@ export interface AgentState {
   label?: string;
   /** 'lead' for a project's lead (one per Directory, see projects/). */
   projectRole?: 'lead' | 'secretary';
+  /** Set on a work chat a project lead started (see projects/leadTools.ts). */
+  projectLeadId?: number;
   /** Timestamp of last JSONL data received (ms since epoch) */
   lastDataAt: number;
   /** Total JSONL lines processed for this agent */

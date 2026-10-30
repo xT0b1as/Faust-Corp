@@ -16,6 +16,7 @@ import {
   CONTEXT_GAUGE_HEIGHT_PX,
   CONTEXT_GAUGE_WIDTH_PX,
   CONTEXT_WARN_THRESHOLD,
+  LEAD_LABEL_PREFIX,
   OVERLAY_BUBBLE_Z_INDEX,
   OVERLAY_LABEL_SELECTED_Z_INDEX,
   OVERLAY_LABEL_Z_INDEX,
@@ -48,7 +49,7 @@ interface ToolOverlayProps {
   panRef: React.RefObject<{ x: number; y: number }>;
   onCloseAgent: (id: number) => void;
   /** Type a command into the agent's terminal (compact, restart with handover). */
-  onAgentCommand: (id: number, command: 'compact' | 'restartWithHandover') => void;
+  onAgentCommand: (id: number, command: 'compact' | 'restartWithHandover' | 'meeting') => void;
   /** Open the new-chat modal for the agent's Directory. */
   onNewChatHere: (id: number) => void;
   alwaysShowOverlay: boolean;
@@ -284,6 +285,8 @@ export function ToolOverlay({
         // A per-agent label (parallel sessions in one Directory) replaces the
         // Directory name; teammates keep theirs, they're named via agentName.
         const originLabel = (!isSub && officeState.agentLabels.get(id)) || ch.directoryName;
+        const isLead =
+          !isSub && (officeState.agentLabels.get(id) ?? '').startsWith(LEAD_LABEL_PREFIX);
         const hasExtraLines = !!(originLabel || teamRoleLabel);
 
         // Context gauge. Every agent gets one — lead, teammate, adopted,
@@ -388,6 +391,15 @@ export function ToolOverlay({
                         'Kontext kompaktieren (/compact)',
                         () => onAgentCommand(id, 'compact'),
                       ],
+                      ...(isLead
+                        ? ([
+                            [
+                              'Besprechung',
+                              'Chats des Projekts zusammenholen, Wagner fasst den Stand zusammen',
+                              () => onAgentCommand(id, 'meeting'),
+                            ],
+                          ] as const)
+                        : []),
                       [
                         'Neustart',
                         'Übergabe schreiben, Kontext leeren, mit Übergabe weitermachen',

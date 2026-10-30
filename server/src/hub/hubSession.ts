@@ -57,7 +57,7 @@ const HUB_OWNED = new Set([
 ]);
 
 /** Fields holding an agent id, in any message. */
-const ID_FIELDS = ['id', 'agentId', 'parentAgentId', 'leadAgentId'] as const;
+const ID_FIELDS = ['id', 'agentId', 'parentAgentId', 'leadAgentId', 'projectLeadId'] as const;
 /** existingAgents maps keyed by agent id. */
 const ID_KEYED_MAPS = ['agentMeta', 'directoryNames', 'labels', 'externalAgents'] as const;
 
