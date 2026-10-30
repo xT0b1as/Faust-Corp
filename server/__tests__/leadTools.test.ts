@@ -105,9 +105,13 @@ describe('project lead MCP tools', () => {
     const result = startProjectLead(deps, project);
     const leadId = result.ok ? result.agentId : -1;
     const args = spawned[0];
-    const config = JSON.parse(args[args.indexOf('--mcp-config') + 1]);
+    const configPath = args[args.indexOf('--mcp-config') + 1];
+    // A file, not the JSON itself: the token must not show up in the process list.
+    expect(args.join(' ')).not.toContain('secret');
+    expect(fs.statSync(configPath).mode & 0o777).toBe(0o600);
+    const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
     expect(config.mcpServers.faust.url).toBe(`http://127.0.0.1:4321/mcp/agent/${leadId}`);
-    expect(config).toEqual(JSON.parse(mcpConfigForAgent(leadId)!));
+    expect(mcpConfigForAgent(leadId)).toBe(configPath);
   });
 
   it('serves initialize and the tool list', async () => {

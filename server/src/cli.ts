@@ -8,6 +8,7 @@
  * Each connecting WebSocket client receives the full state on webviewReady.
  */
 
+import * as fs from 'fs';
 import * as path from 'path';
 
 import { AgentRuntime } from './agentRuntime.js';
@@ -73,7 +74,25 @@ export function parseArgs(argv: string[]): CliArgs {
   const isHub = argv[0] === 'hub';
   if (isHub) args.hubNodes = [];
   for (let i = isHub ? 1 : 0; i < argv.length; i++) {
-    if (argv[i] === '--node' && args.hubNodes) {
+    if (argv[i] === '--nodes-file' && args.hubNodes) {
+      // One `name=url` per line; keeps the node tokens out of the process list.
+      let lines: string[];
+      try {
+        lines = fs.readFileSync(argv[i + 1] ?? '', 'utf-8').split(/\r?\n/);
+      } catch {
+        throw new CliArgsError(`--nodes-file: cannot read "${argv[i + 1] ?? ''}".`);
+      }
+      for (const line of lines.map((l) => l.trim()).filter((l) => l && !l.startsWith('#'))) {
+        try {
+          args.hubNodes.push(parseNodeArg(line));
+        } catch (err) {
+          throw new CliArgsError(
+            `--nodes-file: ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
+      }
+      i++;
+    } else if (argv[i] === '--node' && args.hubNodes) {
       try {
         args.hubNodes.push(parseNodeArg(argv[i + 1] ?? ''));
       } catch (err) {
@@ -134,7 +153,9 @@ Hub (one office over several machines):
                         Each node runs a normal server; <url> is its tokened
                         URL, reached over Tailscale or an SSH tunnel, e.g.
                         --node pc=https://pc.tailnet.ts.net/?token=...
-                        --node laptop=http://127.0.0.1:3101/?token=...`);
+                        --node laptop=http://127.0.0.1:3101/?token=...
+  --nodes-file <path>   Read the nodes from a file (one name=url per line),
+                        so their tokens stay out of the process list`);
       process.exit(0);
     }
   }
