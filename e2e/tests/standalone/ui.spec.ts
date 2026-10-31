@@ -102,7 +102,7 @@ test.describe('Standalone / UI', () => {
     await modal
       .locator('input[placeholder="Absolute asset directory path"]')
       .fill(standalone.workspaceDir);
-    await modal.locator('button', { hasText: 'Add' }).click();
+    await modal.locator('button', { hasText: 'Hinzufügen' }).click();
 
     // getByTitle matches the title attribute literally; a raw CSS
     // [title="..."] selector would mis-parse the backslashes in a Windows path
@@ -131,7 +131,7 @@ test.describe('Standalone / UI', () => {
 
     const [download] = await Promise.all([
       page.waitForEvent('download'),
-      modal.locator('button', { hasText: 'Export Layout' }).click(),
+      modal.locator('button', { hasText: 'Layout exportieren' }).click(),
     ]);
 
     expect(download.suggestedFilename()).toBe('pixel-agents-layout.json');

@@ -23,6 +23,8 @@ export interface StandaloneAccess {
   host: string;
   /** Normalized, sorted `--allowed-host` names. */
   allowedHosts: string[];
+  /** True for a hub (an office over other machines); never reused as a node. */
+  hub?: boolean;
 }
 
 /** Complete per-server discovery record stored in the multi-server registry. */
@@ -46,6 +48,7 @@ export function sameStandaloneAccess(
 ): boolean {
   if (running === undefined || wanted === undefined) return running === wanted;
   return (
+    (running.hub ?? false) === (wanted.hub ?? false) &&
     running.terminal === wanted.terminal &&
     running.host === wanted.host &&
     running.allowedHosts.length === wanted.allowedHosts.length &&
@@ -59,7 +62,8 @@ function isStandaloneAccess(value: unknown): value is StandaloneAccess {
     typeof value.terminal === 'boolean' &&
     typeof value.host === 'string' &&
     Array.isArray(value.allowedHosts) &&
-    value.allowedHosts.every((h) => typeof h === 'string')
+    value.allowedHosts.every((h) => typeof h === 'string') &&
+    (value.hub === undefined || typeof value.hub === 'boolean')
   );
 }
 

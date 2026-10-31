@@ -16,6 +16,10 @@ interface BottomToolbarProps {
   onAddDirectory: () => void;
   /** Pencil on a user-defined row — opens the modal pre-filled. */
   onEditDirectory: (directory: Directory) => void;
+  onLaunchWithTask: (directory: Directory) => void;
+  onStartLead: (directory: Directory) => void;
+  onStartSecretary: () => void;
+  onFoundDepartment: () => void;
   /** Standalone: server has a working PTY, so agents can be launched here. */
   terminalAvailable: boolean;
   /** Why the terminal is off (shown on the disabled button's tooltip). */
@@ -30,6 +34,10 @@ export function BottomToolbar({
   directories,
   onAddDirectory,
   onEditDirectory,
+  onLaunchWithTask,
+  onStartLead,
+  onStartSecretary,
+  onFoundDepartment,
   terminalAvailable,
   terminalUnavailableReason,
 }: BottomToolbarProps) {
@@ -108,22 +116,38 @@ export function BottomToolbar({
               setIsDrawerOpen(false);
               onEditDirectory(directory);
             }}
+            onLaunchWithTask={(directory) => {
+              setIsDrawerOpen(false);
+              onLaunchWithTask(directory);
+            }}
+            onStartLead={(directory) => {
+              setIsDrawerOpen(false);
+              onStartLead(directory);
+            }}
+            onStartSecretary={() => {
+              setIsDrawerOpen(false);
+              onStartSecretary();
+            }}
+            onFoundDepartment={() => {
+              setIsDrawerOpen(false);
+              onFoundDepartment();
+            }}
           />
         </div>
       )}
       <Button
         variant={isEditMode ? 'active' : 'default'}
         onClick={onToggleEditMode}
-        title="Edit office layout"
+        title="Büro einrichten"
       >
-        Layout
+        Einrichten
       </Button>
       <Button
         variant={isSettingsOpen ? 'active' : 'default'}
         onClick={onToggleSettings}
-        title="Settings"
+        title="Einstellungen"
       >
-        Settings
+        Einstellungen
       </Button>
     </div>
   );

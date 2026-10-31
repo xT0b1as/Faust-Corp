@@ -171,7 +171,7 @@ test.describe('Standalone / mobile shell', () => {
     );
 
     // The mobile shell, not the desktop one: no bottom toolbar, a launch card.
-    await expect(page.getByRole('button', { name: 'Layout' })).toHaveCount(0);
+    await expect(page.getByRole('button', { name: 'Einrichten' })).toHaveCount(0);
     const launch = page.getByTitle('Launch agent', { exact: true });
     await expect(launch).toBeVisible();
     await expectView(page, 'office');

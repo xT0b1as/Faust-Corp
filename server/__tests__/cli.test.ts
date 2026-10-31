@@ -65,6 +65,22 @@ function runCli(args: string[]): Promise<{ code: number | null; stdout: string; 
 }
 
 describe('parseArgs', () => {
+  it('reads hub nodes from a file, keeping tokens off the command line', () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'pxl-nodes-'));
+    const file = path.join(dir, 'nodes.txt');
+    fs.writeFileSync(
+      file,
+      '# Rechner\npc=http://127.0.0.1:3101/?token=a\n\nlaptop=https://l.ts.net/?token=b\n',
+    );
+    const args = parseArgs(['hub', '--nodes-file', file]);
+    expect(args.hubNodes?.map((n) => [n.name, n.token])).toEqual([
+      ['pc', 'a'],
+      ['laptop', 'b'],
+    ]);
+    expect(() => parseArgs(['hub'])).toThrow(CliArgsError);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
   // 1. No --port -> ephemeral default (unset), never a hardcoded port
   it('defaults port to undefined (ephemeral) when --port is omitted', () => {
     const args = parseArgs([]);

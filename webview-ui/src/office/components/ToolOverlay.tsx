@@ -16,6 +16,7 @@ import {
   CONTEXT_GAUGE_HEIGHT_PX,
   CONTEXT_GAUGE_WIDTH_PX,
   CONTEXT_WARN_THRESHOLD,
+  LEAD_LABEL_PREFIX,
   OVERLAY_BUBBLE_Z_INDEX,
   OVERLAY_LABEL_SELECTED_Z_INDEX,
   OVERLAY_LABEL_Z_INDEX,
@@ -47,6 +48,10 @@ interface ToolOverlayProps {
   zoom: number;
   panRef: React.RefObject<{ x: number; y: number }>;
   onCloseAgent: (id: number) => void;
+  /** Type a command into the agent's terminal (compact, restart with handover). */
+  onAgentCommand: (id: number, command: 'compact' | 'restartWithHandover' | 'meeting') => void;
+  /** Open the new-chat modal for the agent's Directory. */
+  onNewChatHere: (id: number) => void;
   alwaysShowOverlay: boolean;
 }
 
@@ -120,6 +125,8 @@ export function ToolOverlay({
   zoom,
   panRef,
   onCloseAgent,
+  onAgentCommand,
+  onNewChatHere,
   alwaysShowOverlay,
 }: ToolOverlayProps) {
   const [, setTick] = useState(0);
@@ -275,7 +282,12 @@ export function ToolOverlay({
 
         // Team info
         const teamRoleLabel = ch.isTeamLead ? 'LEAD' : ch.agentName || null;
-        const hasExtraLines = !!(ch.directoryName || teamRoleLabel);
+        // A per-agent label (parallel sessions in one Directory) replaces the
+        // Directory name; teammates keep theirs, they're named via agentName.
+        const originLabel = (!isSub && officeState.agentLabels.get(id)) || ch.directoryName;
+        const isLead =
+          !isSub && (officeState.agentLabels.get(id) ?? '').startsWith(LEAD_LABEL_PREFIX);
+        const hasExtraLines = !!(originLabel || teamRoleLabel);
 
         // Context gauge. Every agent gets one — lead, teammate, adopted,
         // headless — as soon as it has taken a turn. Sub-agents never do: they
@@ -327,9 +339,9 @@ export function ToolOverlay({
                   >
                     {activityText}
                   </span>
-                  {ch.directoryName && (
+                  {originLabel && (
                     <span className="text-2xs leading-none overflow-hidden text-ellipsis block">
-                      {ch.directoryName}
+                      {originLabel}
                     </span>
                   )}
                 </div>
@@ -367,6 +379,48 @@ export function ToolOverlay({
                       background: getFuelColor(contextRatio),
                     }}
                   />
+                </div>
+              )}
+              {isSelected && !isSub && ch.leadAgentId === undefined && (
+                <div className="flex gap-2 mt-2" data-testid="agent-actions">
+                  {(
+                    [
+                      ['Neuer Chat', 'Neuer Chat im selben Projekt', () => onNewChatHere(id)],
+                      [
+                        'Kompakt',
+                        'Kontext kompaktieren (/compact)',
+                        () => onAgentCommand(id, 'compact'),
+                      ],
+                      ...(isLead
+                        ? ([
+                            [
+                              'Besprechung',
+                              'Chats des Projekts zusammenholen, Wagner fasst den Stand zusammen',
+                              () => onAgentCommand(id, 'meeting'),
+                            ],
+                          ] as const)
+                        : []),
+                      [
+                        'Neustart',
+                        'Übergabe schreiben, Kontext leeren, mit Übergabe weitermachen',
+                        () => onAgentCommand(id, 'restartWithHandover'),
+                      ],
+                    ] as const
+                  ).map(([text, title, action]) => (
+                    <Button
+                      key={text}
+                      variant="default"
+                      size="sm"
+                      title={title}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        action();
+                      }}
+                      className="text-2xs! py-0! px-4! pointer-coarse:text-xs! pointer-coarse:py-4! pointer-coarse:px-8!"
+                    >
+                      {text}
+                    </Button>
+                  ))}
                 </div>
               )}
             </div>

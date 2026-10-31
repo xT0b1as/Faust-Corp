@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'async_hooks';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
@@ -31,9 +32,24 @@ interface ClaudeSettings {
   [key: string]: unknown;
 }
 
-/** Returns the absolute path to ~/.claude/settings.json. */
+/** A second Claude account's config directory (CLAUDE_CONFIG_DIR), when an
+ *  operation runs for that account instead of the default ~/.claude. Scoped
+ *  with AsyncLocalStorage so concurrent installs for different accounts never
+ *  see each other's directory; every safeguard below applies unchanged. */
+const configDirScope = new AsyncLocalStorage<string>();
+
+/** Returns the absolute path to ~/.claude/settings.json, or to the
+ *  settings.json of the account whose scope this runs in. */
 function getClaudeSettingsPath(): string {
-  return path.join(os.homedir(), '.claude', 'settings.json');
+  return path.join(
+    configDirScope.getStore() ?? path.join(os.homedir(), '.claude'),
+    'settings.json',
+  );
+}
+
+/** Run an install / uninstall / check against another account's config dir. */
+export function forClaudeConfigDir<T>(configDir: string, fn: () => T): T {
+  return configDirScope.run(configDir, fn);
 }
 
 /** Returns the destination path for the hook script (~/.pixel-agents/hooks/claude-hook.js). */

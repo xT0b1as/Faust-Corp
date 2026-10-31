@@ -104,6 +104,45 @@ describe('launchStandaloneAgent', () => {
 
   // ── Successful launch ────────────────────────────────────────
 
+  it('passes a task as the first message and names the agent', () => {
+    const harness = workingPtyManager();
+    const cwd = path.join(tempDir, 'workspace');
+    fs.mkdirSync(cwd);
+
+    launch(harness, { directoryPath: cwd, prompt: '  -fix the login  ', label: 'Login' });
+
+    const agent = store.get(1);
+    // `--` keeps a task starting with "-" from parsing as a CLI flag.
+    expect(harness.spawnArgs[0].args).toEqual([
+      '--session-id',
+      agent?.sessionId,
+      '--',
+      '-fix the login',
+    ]);
+    expect(agent?.label).toBe('Login');
+  });
+
+  it('numbers parallel agents in one Directory and leaves the first unnamed', () => {
+    const harness = workingPtyManager();
+    const cwd = path.join(tempDir, 'workspace');
+    fs.mkdirSync(cwd);
+
+    launch(harness, { directoryPath: cwd });
+    launch(harness, { directoryPath: cwd });
+    launch(harness, { directoryPath: cwd, label: 'Login' });
+    launch(harness, { directoryPath: cwd });
+
+    expect(store.get(1)?.label).toBeUndefined();
+    expect(store.get(2)?.label).toBe('workspace 2');
+    expect(store.get(3)?.label).toBe('Login');
+    expect(store.get(4)?.label).toBe('workspace 3');
+
+    // A freed number is reused once its holder has left the office.
+    store.delete(2);
+    launch(harness, { directoryPath: cwd });
+    expect(store.get(5)?.label).toBe('workspace 2');
+  });
+
   it('spawns the provider launch command in a PTY and registers the agent', () => {
     const harness = workingPtyManager();
     const cwd = path.join(tempDir, 'workspace');

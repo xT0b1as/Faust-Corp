@@ -18,6 +18,7 @@ import {
   SERVERS_DIR,
 } from './constants.js';
 import { createHttpServer } from './httpServer.js';
+import type { HubNodeConfig } from './hub/hubNodes.js';
 import type { ServerConfig, StandaloneAccess } from './serverConfig.js';
 import { isServerConfig, isServerTarget, sameStandaloneAccess } from './serverConfig.js';
 import { loadOrCreateStandaloneToken } from './serverToken.js';
@@ -79,6 +80,12 @@ export class PixelAgentsServer {
      *  the old one. Refused while another standalone server is running: it
      *  would keep honouring the old token until it restarts. */
     rotateToken?: boolean;
+    /** Hub mode: the machines this office aggregates. */
+    hubNodes?: HubNodeConfig[];
+    /** Hub mode: URL the nodes reach the hub under (secretary's faust-hub tools). */
+    hubPublicUrl?: string;
+    /** Hub mode: ntfy topic for phone notifications across every node. */
+    hubNtfyUrl?: string;
   }): Promise<ServerConfig> {
     const embedded = options?.embedded ?? true;
     const wantsSpa = !embedded;
@@ -89,6 +96,7 @@ export class PixelAgentsServer {
           terminal: options?.ptyManager?.enabled ?? false,
           host,
           allowedHosts: normalizedAllowedHosts(options?.allowedHosts ?? []),
+          ...(options?.hubNodes ? { hub: true } : {}),
         };
 
     // Capability-based reuse: an embedded (VS Code) caller only reuses another
@@ -144,6 +152,9 @@ export class PixelAgentsServer {
       onReloadAssets: options?.onReloadAssets,
       ptyManager: options?.ptyManager,
       allowedHosts: standalone?.allowedHosts,
+      hubNodes: options?.hubNodes,
+      hubPublicUrl: options?.hubPublicUrl,
+      hubNtfyUrl: options?.hubNtfyUrl,
     });
 
     this.app = app;

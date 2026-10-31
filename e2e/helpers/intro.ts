@@ -15,16 +15,16 @@ import { expect } from '@playwright/test';
 
 /** Walk the Intro from its opening step to the consent step. */
 export async function advanceIntroToConsentStep(dialog: Locator): Promise<void> {
-  await expect(dialog).toContainText('Welcome to Pixel Agents!');
-  await dialog.getByRole('button', { name: 'Continue' }).click();
+  await expect(dialog).toContainText('Willkommen in der Faust Corp!');
+  await dialog.getByRole('button', { name: 'Weiter' }).click();
   await expect(dialog).toContainText('Claude Code');
-  await dialog.getByRole('button', { name: 'Continue' }).click();
-  await expect(dialog.getByRole('button', { name: 'Install Hooks' })).toBeVisible();
+  await dialog.getByRole('button', { name: 'Weiter' }).click();
+  await expect(dialog.getByRole('button', { name: 'Hooks installieren' })).toBeVisible();
 }
 
-/** Close the Intro from its closing step ("You're all set!"). */
+/** Close the Intro from its closing step ('Alles bereit!'). */
 export async function finishIntro(dialog: Locator): Promise<void> {
-  await expect(dialog).toContainText("You're all set!");
+  await expect(dialog).toContainText('Alles bereit!');
   await dialog.getByRole('button', { name: "Let's Go" }).click();
   await expect(dialog).toBeHidden({ timeout: 15_000 });
 }

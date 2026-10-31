@@ -508,6 +508,8 @@ export class AgentRuntime {
         // spawns' transcripts and the completion queue-op still matches.
         backgroundAgentToolIds: new Set(p.backgroundAgentToolIds ?? []),
         directoryName: p.directoryName ?? p.folderName,
+        label: p.label,
+        projectRole: p.projectRole,
         teamName: p.teamName,
         agentName: p.agentName,
         isTeamLead: p.isTeamLead,

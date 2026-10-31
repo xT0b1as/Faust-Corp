@@ -69,6 +69,38 @@ export interface Directory {
   /** Where the entry came from. Host-contributed entries (VS Code's workspace
    *  folders, standalone's start directory) are read-only in the office. */
   source: 'user' | 'host';
+  /** Claude config directory for agents launched here; absent = default account. */
+  account?: string;
+  /** Hub mode: the machine this Directory lives on. */
+  node?: string;
+}
+
+/** One task file of a project (`.faust/aufgaben/`). */
+export interface TaskSummary {
+  directoryPath: string;
+  project: string;
+  file: string;
+  title: string;
+  status: string;
+  assignee?: string;
+  approval?: string;
+  node?: string;
+}
+
+/** Today's token use of one Claude account. */
+export interface AccountUsage {
+  account: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  sessions: number;
+  node?: string;
+}
+
+/** Hub mode: one aggregated machine. */
+export interface HubNode {
+  name: string;
+  connected: boolean;
 }
 
 /** A refused saveDirectory, shown inline in the Directory modal. `seq` rises
@@ -111,6 +143,10 @@ interface ExtensionMessageState {
   /** Paths the host recovered from past sessions, offered as taps in the
    *  Directory modal. Refreshed every time the modal asks. */
   directorySuggestions: string[];
+  /** Hub mode only; empty for a normal office. */
+  hubNodes: HubNode[];
+  tasks: TaskSummary[];
+  usage: AccountUsage[];
   /** Distinct directoryNames seen across agents this session — source for the Areas Directory dropdown. */
   agentDirectoryNames: string[];
   externalAssetDirectories: string[];
@@ -198,6 +234,9 @@ export function useExtensionMessages(
   const [directoryRejection, setDirectoryRejection] = useState<DirectoryRejection | null>(null);
   const [directorySaved, setDirectorySaved] = useState<DirectorySaved | null>(null);
   const [directorySuggestions, setDirectorySuggestions] = useState<string[]>([]);
+  const [hubNodes, setHubNodes] = useState<HubNode[]>([]);
+  const [tasks, setTasks] = useState<TaskSummary[]>([]);
+  const [usage, setUsage] = useState<AccountUsage[]>([]);
   const [agentDirectoryNames, setAgentDirectoryNames] = useState<string[]>([]);
   const [externalAssetDirectories, setExternalAssetDirectories] = useState<string[]>([]);
   const [lastSeenVersion, setLastSeenVersion] = useState('');
@@ -349,6 +388,12 @@ export function useExtensionMessages(
         const teammateName = msg.teammateName as string | undefined;
         const teammateParentId = msg.parentAgentId as number | undefined;
         const teamName = msg.teamName as string | undefined;
+        const label = msg.label as string | undefined;
+        const node = msg.node as string | undefined;
+        // Hub mode: say which machine the agent runs on.
+        const shown = node ? `${label ?? directoryName ?? 'Agent'} @${node}` : label;
+        if (shown) os.agentLabels.set(id, shown);
+        else os.agentLabels.delete(id);
         setAgents((prev) => (prev.includes(id) ? prev : [...prev, id]));
         // Don't auto-select teammates (keep focus on lead)
         if (!isTeammate) {
@@ -381,7 +426,17 @@ export function useExtensionMessages(
         } else {
           const palette = msg.palette as number | undefined;
           const hueShift = msg.hueShift as number | undefined;
-          os.addAgent(id, palette, hueShift, undefined, undefined, directoryName);
+          // A lead's work chat sits near its lead (it shares the lead's colours).
+          const nearLead = msg.projectLeadId as number | undefined;
+          os.addAgent(
+            id,
+            palette,
+            hueShift,
+            undefined,
+            undefined,
+            directoryName,
+            nearLead !== undefined && os.characters.has(nearLead) ? nearLead : undefined,
+          );
           noteDirectoryName(directoryName);
           if (isHeadlessAgent(msg.isExternal as boolean | undefined)) {
             os.setHeadless(id, true);
@@ -390,6 +445,7 @@ export function useExtensionMessages(
         saveAgentSeats(os);
       } else if (msg.type === 'agentClosed') {
         const id = msg.id as number;
+        os.agentLabels.delete(id);
         setAgents((prev) => prev.filter((a) => a !== id));
         setSelectedAgent((prev) => (prev === id ? null : prev));
         // Drop the drawer tab too. terminalSessionClosed normally does this, but
@@ -411,8 +467,11 @@ export function useExtensionMessages(
         const meta = (msg.agentMeta || {}) as Record<number, ExistingAgentMeta>;
         const directoryNames = (msg.directoryNames || {}) as Record<number, string>;
         const externalAgents = (msg.externalAgents || {}) as Record<number, boolean>;
+        const labels = (msg.labels || {}) as Record<number, string>;
         const headlessAgents: Record<number, boolean> = {};
         for (const id of incoming) {
+          if (labels[id]) os.agentLabels.set(id, labels[id]);
+          else os.agentLabels.delete(id);
           noteDirectoryName(directoryNames[id]);
           if (isHeadlessAgent(externalAgents[id])) headlessAgents[id] = true;
         }
@@ -732,6 +791,12 @@ export function useExtensionMessages(
         setDirectories(directories);
       } else if (msg.type === 'directorySuggestions') {
         setDirectorySuggestions((msg.paths ?? []) as string[]);
+      } else if (msg.type === 'tasksLoaded') {
+        setTasks((msg.tasks ?? []) as TaskSummary[]);
+      } else if (msg.type === 'usageReport') {
+        setUsage((msg.accounts ?? []) as AccountUsage[]);
+      } else if (msg.type === 'hubNodes') {
+        setHubNodes((msg.nodes ?? []) as HubNode[]);
       } else if (msg.type === 'directorySaved') {
         const directory = msg.directory as Directory;
         setDirectorySaved((prev) => ({ directory, seq: (prev?.seq ?? 0) + 1 }));
@@ -741,6 +806,13 @@ export function useExtensionMessages(
           reason: msg.reason as string,
           seq: (prev?.seq ?? 0) + 1,
         }));
+      } else if (msg.type === 'agentCommandRejected') {
+        window.alert(msg.reason as string);
+      } else if (msg.type === 'projectLeadRejected') {
+        // Rare (unknown Directory, unwritable folder, no terminal) and needs no
+        // follow-up UI: a plain alert is enough to say why nothing happened.
+        console.warn(`[Webview] Project lead: ${msg.reason as string}`);
+        window.alert(`Projektleiter konnte nicht gestartet werden: ${msg.reason as string}`);
       } else if (msg.type === 'settingsLoaded') {
         const soundOn = msg.soundEnabled as boolean;
         setSoundEnabled(soundOn);
@@ -883,6 +955,9 @@ export function useExtensionMessages(
     directoryRejection,
     directorySaved,
     directorySuggestions,
+    hubNodes,
+    tasks,
+    usage,
     agentDirectoryNames,
     externalAssetDirectories,
     lastSeenVersion,

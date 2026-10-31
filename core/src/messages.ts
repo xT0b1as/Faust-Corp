@@ -43,6 +43,11 @@ export type ServerMessage =
   | DirectorySaved
   | DirectoryRejected
   | DirectorySuggestions
+  | ProjectLeadRejected
+  | AgentCommandRejected
+  | HubNodes
+  | TasksLoaded
+  | UsageReport
   | TerminalAvailability
   | TerminalSessionOpened
   | TerminalSessionClosed
@@ -75,6 +80,13 @@ export type ClientMessage =
   | SaveDirectory
   | RemoveDirectory
   | RequestDirectorySuggestions
+  | StartProjectLead
+  | AgentCommand
+  | StartSecretary
+  | MessageProjectLead
+  | RequestTasks
+  | SetTaskApproval
+  | RequestUsage
   | RequestDiagnostics;
 
 export interface ProviderCapabilities {
@@ -87,6 +99,9 @@ export interface AgentCreated {
   type: 'agentCreated';
   id: number;
   directoryName?: string;
+  label?: string;
+  node?: string;
+  projectLeadId?: number;
   isExternal?: boolean;
   palette?: number;
   hueShift?: number;
@@ -107,6 +122,7 @@ export interface ExistingAgents {
   agents: number[];
   agentMeta: Record<string, AgentSeatMeta>;
   directoryNames: Record<string, string>;
+  labels?: Record<string, string>;
   externalAgents: Record<string, boolean>;
 }
 
@@ -334,6 +350,8 @@ export interface Directory {
   name: string;
   path: string;
   source: DirectorySource;
+  account?: string;
+  node?: string;
 }
 
 export type DirectorySource = 'user' | 'host';
@@ -352,6 +370,58 @@ export interface DirectoryRejected {
 export interface DirectorySuggestions {
   type: 'directorySuggestions';
   paths: string[];
+}
+
+export interface ProjectLeadRejected {
+  type: 'projectLeadRejected';
+  directoryPath: string;
+  reason: string;
+}
+
+export interface AgentCommandRejected {
+  type: 'agentCommandRejected';
+  id: number;
+  reason: string;
+}
+
+export interface HubNodes {
+  type: 'hubNodes';
+  nodes: HubNode[];
+}
+
+export interface HubNode {
+  name: string;
+  connected: boolean;
+}
+
+export interface TasksLoaded {
+  type: 'tasksLoaded';
+  tasks: TaskSummary[];
+}
+
+export interface TaskSummary {
+  directoryPath: string;
+  project: string;
+  file: string;
+  title: string;
+  status: string;
+  assignee?: string;
+  approval?: string;
+  node?: string;
+}
+
+export interface UsageReport {
+  type: 'usageReport';
+  accounts: AccountUsage[];
+}
+
+export interface AccountUsage {
+  account: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  sessions: number;
+  node?: string;
 }
 
 export interface TerminalAvailability {
@@ -383,6 +453,8 @@ export interface WebviewReady {
 export interface LaunchAgent {
   type: 'launchAgent';
   directoryPath?: string;
+  prompt?: string;
+  label?: string;
 }
 
 export interface FocusAgent {
@@ -501,6 +573,8 @@ export interface SaveDirectory {
   name: string;
   path: string;
   previousPath?: string;
+  account?: string;
+  node?: string;
 }
 
 export interface RemoveDirectory {
@@ -510,6 +584,46 @@ export interface RemoveDirectory {
 
 export interface RequestDirectorySuggestions {
   type: 'requestDirectorySuggestions';
+}
+
+export interface StartProjectLead {
+  type: 'startProjectLead';
+  directoryPath: string;
+}
+
+export interface AgentCommand {
+  type: 'agentCommand';
+  id: number;
+  command: AgentCommandKind;
+}
+
+export type AgentCommandKind = 'compact' | 'restartWithHandover' | 'meeting';
+
+export interface StartSecretary {
+  type: 'startSecretary';
+  hubMcpUrl?: string;
+  hubMcpToken?: string;
+}
+
+export interface MessageProjectLead {
+  type: 'messageProjectLead';
+  directoryPath: string;
+  text: string;
+}
+
+export interface RequestTasks {
+  type: 'requestTasks';
+}
+
+export interface SetTaskApproval {
+  type: 'setTaskApproval';
+  directoryPath: string;
+  file: string;
+  approved: boolean;
+}
+
+export interface RequestUsage {
+  type: 'requestUsage';
 }
 
 export interface RequestDiagnostics {

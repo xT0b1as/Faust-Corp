@@ -121,6 +121,12 @@ components:
         - $ref: '#/components/schemas/DirectorySaved'
         - $ref: '#/components/schemas/DirectoryRejected'
         - $ref: '#/components/schemas/DirectorySuggestions'
+        # Projects (project lead + memory folder)
+        - $ref: '#/components/schemas/ProjectLeadRejected'
+        - $ref: '#/components/schemas/AgentCommandRejected'
+        - $ref: '#/components/schemas/HubNodes'
+        - $ref: '#/components/schemas/TasksLoaded'
+        - $ref: '#/components/schemas/UsageReport'
         # Terminal (standalone embedded terminal control plane)
         - $ref: '#/components/schemas/TerminalAvailability'
         - $ref: '#/components/schemas/TerminalSessionOpened'
@@ -157,6 +163,14 @@ components:
         - $ref: '#/components/schemas/SaveDirectory'
         - $ref: '#/components/schemas/RemoveDirectory'
         - $ref: '#/components/schemas/RequestDirectorySuggestions'
+        # Projects
+        - $ref: '#/components/schemas/StartProjectLead'
+        - $ref: '#/components/schemas/AgentCommand'
+        - $ref: '#/components/schemas/StartSecretary'
+        - $ref: '#/components/schemas/MessageProjectLead'
+        - $ref: '#/components/schemas/RequestTasks'
+        - $ref: '#/components/schemas/SetTaskApproval'
+        - $ref: '#/components/schemas/RequestUsage'
         - $ref: '#/components/schemas/RequestDiagnostics'
       discriminator: type
 
@@ -196,6 +210,19 @@ components:
           type: integer
         directoryName:
           type: string
+        label:
+          type: string
+          description: |
+            Per-agent name shown instead of the Directory name, so several agents
+            in one Directory stay distinguishable. Absent for unnamed agents.
+        node:
+          type: string
+          description: Hub mode only. Name of the machine (node) the agent runs on.
+        projectLeadId:
+          type: integer
+          description: |
+            Set on a work chat a project lead started: the lead's id. The
+            character is seated near its lead (it already wears its colours).
         isExternal:
           type: boolean
         palette:
@@ -249,6 +276,11 @@ components:
         directoryNames:
           type: object
           description: Map of agent ID (string) to Directory name.
+          additionalProperties:
+            type: string
+        labels:
+          type: object
+          description: Map of agent ID (string) to per-agent label (see agentCreated.label).
           additionalProperties:
             type: string
         externalAgents:
@@ -862,6 +894,135 @@ components:
           type: string
           description: Human-readable cause, shown inline in the Directory modal.
 
+    ProjectLeadRejected:
+      description: |
+        A `startProjectLead` could not be carried out (unknown Directory, the
+        memory folder could not be written, or no terminal). Sent point-to-point
+        to the requesting client.
+      type: object
+      additionalProperties: false
+      required: [type, directoryPath, reason]
+      properties:
+        type:
+          const: projectLeadRejected
+        directoryPath:
+          type: string
+        reason:
+          type: string
+          description: Human-readable cause.
+
+    TasksLoaded:
+      description: Every task of every project (`.faust/aufgaben/`), answer to `requestTasks`.
+      type: object
+      additionalProperties: false
+      required: [type, tasks]
+      properties:
+        type:
+          const: tasksLoaded
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskSummary'
+
+    UsageReport:
+      description: Today's token use per Claude account; answer to `requestUsage`.
+      type: object
+      additionalProperties: false
+      required: [type, accounts]
+      properties:
+        type:
+          const: usageReport
+        accounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/AccountUsage'
+
+    AccountUsage:
+      description: One account's tokens today, summed from its transcripts.
+      type: object
+      additionalProperties: false
+      required: [account, inputTokens, outputTokens, cacheReadTokens, sessions]
+      properties:
+        account:
+          type: string
+          description: The account's config directory.
+        inputTokens:
+          type: integer
+          description: Input plus cache-creation tokens.
+        outputTokens:
+          type: integer
+        cacheReadTokens:
+          type: integer
+        sessions:
+          type: integer
+        node:
+          type: string
+          description: Hub mode only.
+
+    TaskSummary:
+      description: One task file, as the office lists it.
+      type: object
+      additionalProperties: false
+      required: [directoryPath, project, file, title, status]
+      properties:
+        directoryPath:
+          type: string
+        project:
+          type: string
+        file:
+          type: string
+        title:
+          type: string
+        status:
+          type: string
+        assignee:
+          type: string
+        approval:
+          type: string
+          description: noetig, erteilt, abgelehnt or nicht_noetig.
+        node:
+          type: string
+          description: Hub mode only.
+
+    HubNodes:
+      description: |
+        Hub mode only. The machines (nodes) this office aggregates and whether
+        each is connected right now. Sent on connect and on every change.
+      type: object
+      additionalProperties: false
+      required: [type, nodes]
+      properties:
+        type:
+          const: hubNodes
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/HubNode'
+
+    HubNode:
+      description: One machine in a hub's office.
+      type: object
+      additionalProperties: false
+      required: [name, connected]
+      properties:
+        name:
+          type: string
+        connected:
+          type: boolean
+
+    AgentCommandRejected:
+      description: An `agentCommand` could not start. Sent to the requesting client only.
+      type: object
+      additionalProperties: false
+      required: [type, id, reason]
+      properties:
+        type:
+          const: agentCommandRejected
+        id:
+          type: integer
+        reason:
+          type: string
+
     DirectorySuggestions:
       description: |
         Candidate paths for the Directory modal, recovered from the working
@@ -989,6 +1150,12 @@ components:
         directoryPath:
           type: string
           description: Path of the Directory to launch into.
+        prompt:
+          type: string
+          description: First message sent to the new agent (its task). Omitted for a blank session.
+        label:
+          type: string
+          description: Name for the new agent; defaults to a numbered Directory name when the Directory already has agents.
 
     FocusAgent:
       description: Focus an agent's terminal.
@@ -1274,6 +1441,12 @@ components:
         previousPath:
           type: string
           description: Path of the entry being edited. Absent when adding.
+        account:
+          type: string
+          description: Claude config directory for this Directory's agents. Empty = default account.
+        node:
+          type: string
+          description: Hub mode only. Machine (node) to save a NEW Directory on.
 
     RemoveDirectory:
       description: >-
@@ -1299,6 +1472,114 @@ components:
       properties:
         type:
           const: requestDirectorySuggestions
+
+    StartProjectLead:
+      description: |
+        Bring up the project lead of a Directory: set up the project's memory
+        folder (`.faust/`, plus an import block in CLAUDE.md) if it is missing,
+        then launch the lead. When the lead is already in the office it is
+        selected instead (`agentSelected`) and nothing new is launched.
+      type: object
+      additionalProperties: false
+      required: [type, directoryPath]
+      properties:
+        type:
+          const: startProjectLead
+        directoryPath:
+          type: string
+
+    AgentCommand:
+      description: |
+        Type a command into an agent's terminal on the user's behalf. `compact`
+        sends /compact. `restartWithHandover` asks the agent to write a handover
+        to .faust/uebergaben/, waits for its turn to end, sends /clear, then tells
+        the fresh session to read the handover back.
+      type: object
+      additionalProperties: false
+      required: [type, id, command]
+      properties:
+        type:
+          const: agentCommand
+        id:
+          type: integer
+        command:
+          $ref: '#/components/schemas/AgentCommandKind'
+
+    StartSecretary:
+      description: |
+        Bring up the office's secretary (one per office, in
+        ~/.pixel-agents/sekretariat/): launch it, or select it when it is already
+        there. A failure answers `projectLeadRejected` with that folder's path.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: startSecretary
+        hubMcpUrl:
+          type: string
+          description: |
+            Set by a hub: its own MCP endpoint, which the secretary loads as a
+            second server (`faust-hub`) for the overview across every machine.
+        hubMcpToken:
+          type: string
+          description: Bearer token for `hubMcpUrl`.
+
+    RequestTasks:
+      description: Ask for every project's tasks; answered with `tasksLoaded`.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: requestTasks
+
+    RequestUsage:
+      description: Ask for today's token use per account; answered with `usageReport`.
+      type: object
+      additionalProperties: false
+      required: [type]
+      properties:
+        type:
+          const: requestUsage
+
+    SetTaskApproval:
+      description: |
+        The user's decision on a task that needs approval. Written into the
+        task's header (`freigabe: erteilt|abgelehnt`) and passed to the
+        project's lead; answered with a fresh `tasksLoaded`.
+      type: object
+      additionalProperties: false
+      required: [type, directoryPath, file, approved]
+      properties:
+        type:
+          const: setTaskApproval
+        directoryPath:
+          type: string
+        file:
+          type: string
+        approved:
+          type: boolean
+
+    MessageProjectLead:
+      description: |
+        Hand a message to a Directory's project lead (starting it when it is
+        not running). Sent by a hub on behalf of the secretary.
+      type: object
+      additionalProperties: false
+      required: [type, directoryPath, text]
+      properties:
+        type:
+          const: messageProjectLead
+        directoryPath:
+          type: string
+        text:
+          type: string
+
+    AgentCommandKind:
+      description: A command the office can type into an agent's terminal.
+      type: string
+      enum: [compact, restartWithHandover, meeting]
 
     SetShowAreas:
       description: Toggle the Areas overlay (translucent rendering on top of the office).
@@ -1368,6 +1649,14 @@ components:
           type: string
         source:
           $ref: '#/components/schemas/DirectorySource'
+        account:
+          type: string
+          description: |
+            Claude account for agents launched here: its config directory
+            (CLAUDE_CONFIG_DIR). Absent = the default account (~/.claude).
+        node:
+          type: string
+          description: Hub mode only. Name of the machine (node) this Directory lives on.
 
     DirectorySource:
       description: |

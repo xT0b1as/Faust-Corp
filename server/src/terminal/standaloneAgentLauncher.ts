@@ -20,7 +20,7 @@ import type { AgentRuntime } from '../agentRuntime.js';
 import { createAgentState } from '../agentState.js';
 import type { AgentStateStore } from '../agentStateStore.js';
 import { JSONL_POLL_INTERVAL_MS } from '../constants.js';
-import { directoryNameForLaunch } from '../directories.js';
+import { accountForLaunch, directoryNameForLaunch } from '../directories.js';
 import { startFileWatching } from '../fileWatcher.js';
 import { directoryNameFor, hostDirectory } from '../hostDirectory.js';
 import { assignPaletteIfNeeded } from '../paletteAssigner.js';
@@ -41,6 +41,18 @@ export interface LaunchStandaloneAgentOptions {
   /** Read from the host's persisted permission posture by the caller; never a
    *  per-launch choice made in the office. */
   bypassPermissions?: boolean;
+  /** The new agent's first message (its task). */
+  prompt?: string;
+  /** Name shown for the agent. Defaults to a numbered Directory name when the
+   *  Directory already has agents, so parallel sessions stay apart. */
+  label?: string;
+  projectRole?: 'lead' | 'secretary';
+  /** A work chat started by a project lead: wears the lead's colours and is
+   *  seated near it. */
+  projectLeadId?: number;
+  /** MCP config for this session, built from the id the agent will get. */
+  mcpConfigFor?: (agentId: number) => string | undefined;
+  allowedTools?: string[];
   cols?: number;
   rows?: number;
 }
@@ -62,22 +74,31 @@ export function launchStandaloneAgent(
 
   const cwd = options.directoryPath ?? process.cwd();
   const sessionId = crypto.randomUUID();
+  const configDir = accountForLaunch(cwd, [hostDirectory()]);
 
   const launch = provider.buildLaunchCommand?.(sessionId, cwd, {
     bypassPermissions: options.bypassPermissions,
+    prompt: options.prompt,
+    // nextAgentId is claimed below in this same synchronous run, so this is the
+    // id the agent gets.
+    mcpConfig: options.mcpConfigFor?.(store.nextAgentId.current),
+    allowedTools: options.allowedTools,
+    configDir,
   });
   if (!launch) {
     console.error('[Pixel Agents] Terminal: provider.buildLaunchCommand is not implemented');
     return null;
   }
 
-  const dirs = provider.getSessionDirs?.(cwd) ?? [];
+  const dirs = provider.getSessionDirs?.(cwd, configDir) ?? [];
   if (dirs.length === 0) {
     console.error('[Pixel Agents] Terminal: provider returned no session dirs');
     return null;
   }
   const projectDir = dirs[0];
 
+  const directoryName = directoryNameForLaunch(cwd, [hostDirectory()]) ?? directoryNameFor(cwd);
+  const lead = options.projectLeadId !== undefined ? store.get(options.projectLeadId) : undefined;
   const id = store.nextAgentId.current++;
 
   let session;
@@ -117,7 +138,12 @@ export function launchStandaloneAgent(
     // "Side Project" labels its agents that, not "side-project", and the Areas
     // it was assigned in the modal actually match. Falls back to the basename
     // for a cwd that is no Directory at all.
-    directoryName: directoryNameForLaunch(cwd, [hostDirectory()]) ?? directoryNameFor(cwd),
+    directoryName,
+    label: options.label?.trim() || defaultLabel(store, directoryName),
+    projectRole: options.projectRole,
+    projectLeadId: options.projectLeadId,
+    palette: lead?.palette,
+    hueShift: lead?.hueShift,
     providerId: provider.id,
   });
 
@@ -201,4 +227,28 @@ function startJsonlPoll(deps: LaunchStandaloneAgentDeps, id: number, agent: Agen
   }, JSONL_POLL_INTERVAL_MS);
 
   runtime.jsonlPollTimers.set(id, timer);
+}
+
+/**
+ * "<Directory> 2", "<Directory> 3", ... once a Directory already has agents;
+ * undefined for the first one, which keeps showing the bare Directory name.
+ * Numbers are never reused while a holder is still in the office.
+ */
+function defaultLabel(
+  store: AgentStateStore,
+  directoryName: string | undefined,
+): string | undefined {
+  if (!directoryName) return undefined;
+  const taken = new Set<number>();
+  let siblings = 0;
+  for (const [, agent] of store) {
+    if (agent.directoryName !== directoryName || agent.leadAgentId !== undefined) continue;
+    siblings++;
+    const match = agent.label?.match(/ (\d+)$/);
+    taken.add(match && agent.label === `${directoryName} ${match[1]}` ? Number(match[1]) : 1);
+  }
+  if (siblings === 0) return undefined;
+  let n = 2;
+  while (taken.has(n)) n++;
+  return `${directoryName} ${n}`;
 }

@@ -119,7 +119,9 @@ export interface HookProvider {
   // ── Optional file fallback (heuristic mode) ──
 
   /** Session directories to scan. Undefined = no file fallback. */
-  getSessionDirs?(workspacePath: string): string[];
+  /** configDir: the CLI's config directory when it is not the default one
+   *  (e.g. a second account), which moves where sessions are written. */
+  getSessionDirs?(workspacePath: string, configDir?: string): string[];
   /** Root directories containing every session this provider may have started
    *  (across all workspaces). Used by global session discovery / "Watch All
    *  Sessions". Each returned dir contains subdirs whose entries are session
@@ -133,7 +135,18 @@ export interface HookProvider {
   buildLaunchCommand?(
     sessionId: string,
     cwd: string,
-    opts?: { bypassPermissions?: boolean },
+    /** prompt: the session's first message (its task), passed so the CLI
+     *  starts working on it straight away. */
+    opts?: {
+      bypassPermissions?: boolean;
+      prompt?: string;
+      /** MCP server config (JSON) to load for this session only. */
+      mcpConfig?: string;
+      /** Tools pre-approved for this session (e.g. its own MCP server). */
+      allowedTools?: string[];
+      /** The CLI's config directory, for an account other than the default. */
+      configDir?: string;
+    },
   ): {
     command: string;
     args: string[];

@@ -11,13 +11,24 @@ import type {
   ReloadAssetsSideEffect,
   SetHooksEnabledSideEffect,
 } from './clientMessageHandler.js';
-import { handleClientMessage } from './clientMessageHandler.js';
+import {
+  handleClientMessage,
+  hostDirectoriesFor,
+  KEY_BYPASS_PERMISSIONS,
+} from './clientMessageHandler.js';
 import {
   HOOK_API_PREFIX,
   MAX_HOOK_BODY_SIZE,
   WS_CLOSE_FORBIDDEN_ORIGIN,
   WS_CLOSE_UNAUTHORIZED,
 } from './constants.js';
+import type { HubNodeConfig } from './hub/hubNodes.js';
+import { HubOverview } from './hub/hubOverview.js';
+import { HubSession, type HubSocket } from './hub/hubSession.js';
+import { registerHubTerminalRoute } from './hub/hubTerminalRoute.js';
+import { MCP_HUB_PATH, setMcpEndpoint } from './projects/mcpEndpoint.js';
+import { registerMcpEndpoint, registerMcpRoute } from './projects/mcpRoute.js';
+import { claudeProvider } from './providers/index.js';
 import type { PtySessionManager } from './terminal/ptySessionManager.js';
 import { registerTerminalRoutes } from './terminal/terminalRoutes.js';
 import type { AgentState } from './types.js';
@@ -60,6 +71,13 @@ export interface HttpServerOptions {
    *  privileged standalone handshake may arrive under -- e.g. a reverse proxy's
    *  public name. See wsAuth.privilegedHostnames. */
   allowedHosts?: readonly string[];
+  /** Hub mode: aggregate these machines' offices instead of running agents here. */
+  hubNodes?: HubNodeConfig[];
+  /** Hub mode: the URL the nodes reach this hub under (e.g. its Tailscale
+   *  name). Enables the secretary's cross-machine `faust-hub` tools. */
+  hubPublicUrl?: string;
+  /** Hub mode: ntfy topic for phone notifications across every node. */
+  hubNtfyUrl?: string;
 }
 
 /** Result of createHttpServer(). */
@@ -69,6 +87,16 @@ export interface HttpServerHandle {
 }
 
 const startTime = Date.now();
+
+/** Local messages a hub never sends: the nodes' versions replace them. */
+const HUB_REPLACED_LOCAL = new Set(['directoriesLoaded', 'terminalAvailability']);
+
+/** Node 22's global WebSocket client, typed as the slice the hub uses. */
+function hubSocketFactory(url: string): HubSocket {
+  const WebSocketCtor = (globalThis as { WebSocket?: new (url: string) => HubSocket }).WebSocket;
+  if (!WebSocketCtor) throw new Error('Hub mode needs Node.js 22 or newer (global WebSocket).');
+  return new WebSocketCtor(url);
+}
 
 /**
  * Create a Fastify server with hook endpoint, health check, and WebSocket support.
@@ -106,13 +134,49 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
   const host = options.host ?? '127.0.0.1';
   const allowedHostnames = privilegedHostnames(host, options.allowedHosts ?? []);
 
+  // Hub mode: one always-on overview of every node, served to the secretary.
+  const hubOverview = options.hubNodes
+    ? new HubOverview(options.hubNodes, hubSocketFactory, options.hubNtfyUrl)
+    : null;
+  if (hubOverview) {
+    registerMcpEndpoint(app, MCP_HUB_PATH, bearerAuth(options.token), () =>
+      hubOverview.asToolProvider(),
+    );
+    app.addHook('onClose', async () => hubOverview.dispose());
+  }
+  const secretaryHubMcp =
+    options.hubNodes && options.hubPublicUrl
+      ? { url: `${options.hubPublicUrl.replace(/\/+$/, '')}${MCP_HUB_PATH}`, token: options.token }
+      : undefined;
+
   registerHealthRoute(app);
   registerHookRoute(app, options);
-  registerWebSocketRoute(app, options, allowedHostnames);
-  registerTerminalRoutes(app, {
-    token: options.token,
-    allowedHostnames,
-    ptyManager: options.ptyManager,
+  registerWebSocketRoute(app, options, allowedHostnames, secretaryHubMcp);
+  if (options.hubNodes) {
+    registerHubTerminalRoute(app, {
+      token: options.token,
+      allowedHostnames,
+      nodes: options.hubNodes,
+      socketFactory: hubSocketFactory,
+    });
+  } else {
+    registerTerminalRoutes(app, {
+      token: options.token,
+      allowedHostnames,
+      ptyManager: options.ptyManager,
+    });
+  }
+  registerMcpRoute(app, bearerAuth(options.token), () => {
+    const { runtime, ptyManager, store } = options;
+    if (!runtime || !ptyManager) return null;
+    return {
+      store,
+      runtime,
+      ptyManager,
+      provider: claudeProvider,
+      hostDirectories: hostDirectoriesFor({ ptyManager }),
+      bypassPermissions: store.getAdapter()?.getSetting(KEY_BYPASS_PERMISSIONS, false) ?? false,
+    };
   });
 
   // ── Listen ──────────────────────────────────────────────────
@@ -120,6 +184,7 @@ export async function createHttpServer(options: HttpServerOptions): Promise<Http
   await app.listen({ host, port: options.port ?? 0 });
   const address = app.server.address();
   const port = typeof address === 'object' ? (address?.port ?? 0) : 0;
+  setMcpEndpoint(port, options.token);
 
   return { app, port };
 }
@@ -173,6 +238,7 @@ function registerWebSocketRoute(
   app: FastifyInstance,
   options: HttpServerOptions,
   allowedHostnames: ReadonlySet<string>,
+  secretaryHubMcp?: { url: string; token: string },
 ): void {
   app.get('/ws', { websocket: true }, (socket, request) => {
     // CONNECTION gate. Embedded (VS Code) requires the Bearer token. Standalone
@@ -218,12 +284,31 @@ function registerWebSocketRoute(
 
     const { store } = options;
 
+    // Hub mode: this browser's view of the nodes (see hub/hubSession.ts). The
+    // hub's own Directory list and terminal state are meaningless here -- the
+    // session sends the nodes' instead.
+    const hub = options.hubNodes
+      ? new HubSession({
+          nodes: options.hubNodes,
+          send: (m) => safeSend(socket, m),
+          hubSeats: () => store.getAdapter()?.loadSeats() ?? {},
+          socketFactory: hubSocketFactory,
+          secretaryHubMcp,
+        })
+      : null;
+    const send = (message: Record<string, unknown>) => {
+      if (hub && HUB_REPLACED_LOCAL.has(message.type as string)) return;
+      safeSend(socket, message);
+    };
+
     // Pipe store events to WebSocket client
     const onAgentAdded = (id: number, agent: AgentState) => {
       safeSend(socket, {
         type: 'agentCreated',
         id,
         directoryName: agent.directoryName,
+        label: agent.label,
+        projectLeadId: agent.projectLeadId,
         isExternal: agent.isExternal || undefined,
         isTeammate: agent.leadAgentId !== undefined || undefined,
         teammateName: agent.agentName,
@@ -240,7 +325,7 @@ function registerWebSocketRoute(
     };
 
     const onBroadcast = (message: Record<string, unknown>) => {
-      safeSend(socket, message);
+      send(message);
     };
 
     store.on('agentAdded', onAgentAdded);
@@ -254,7 +339,8 @@ function registerWebSocketRoute(
         if (!options.embedded && msg.type) {
           console.log('[Pixel Agents] WS client message:', msg.type);
         }
-        handleClientMessage(msg, (m) => safeSend(socket, m), {
+        if (hub && privileged && hub.route(msg)) return;
+        handleClientMessage(msg, send, {
           store,
           runtime: options.runtime,
           cache: options.assetCache ?? null,
@@ -263,12 +349,14 @@ function registerWebSocketRoute(
           privileged,
           ptyManager: options.ptyManager,
         });
+        if (hub && msg.type === 'webviewReady') hub.sendSnapshot();
       } catch {
         // Malformed JSON, ignore
       }
     });
 
     socket.on('close', () => {
+      hub?.dispose();
       store.off('agentAdded', onAgentAdded);
       store.off('agentRemoved', onAgentRemoved);
       store.off('broadcast', onBroadcast);

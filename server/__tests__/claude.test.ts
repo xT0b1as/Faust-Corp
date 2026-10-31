@@ -1,3 +1,4 @@
+import * as path from 'path';
 import { describe, expect, it } from 'vitest';
 
 import { claudeProvider } from '../src/providers/hook/claude/claude.js';
@@ -256,6 +257,21 @@ describe('claudeProvider', () => {
     });
     it('handles undefined input', () => {
       expect(claudeProvider.formatToolStatus('Read', undefined)).toBe('Reading ');
+    });
+  });
+
+  describe('accounts', () => {
+    it('launches a second account through CLAUDE_CONFIG_DIR', () => {
+      const launch = claudeProvider.buildLaunchCommand!('sid', '/w', { configDir: '/h/.claude-b' });
+      expect(launch.env?.CLAUDE_CONFIG_DIR).toBe('/h/.claude-b');
+      expect(
+        claudeProvider.buildLaunchCommand!('sid', '/w').env?.CLAUDE_CONFIG_DIR,
+      ).toBeUndefined();
+    });
+
+    it("looks for that account's sessions under its own config directory", () => {
+      const [dir] = claudeProvider.getSessionDirs!('/w/app', '/h/.claude-b');
+      expect(dir.startsWith(path.join('/h/.claude-b', 'projects'))).toBe(true);
     });
   });
 });

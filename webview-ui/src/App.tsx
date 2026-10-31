@@ -6,18 +6,24 @@ import { BottomToolbar } from './components/BottomToolbar.js';
 import { ChangelogModal } from './components/ChangelogModal.js';
 import { ConnectionIndicator } from './components/ConnectionIndicator.js';
 import { DebugView } from './components/DebugView.js';
+import type { DepartmentValues } from './components/DepartmentModal.js';
+import { DepartmentModal } from './components/DepartmentModal.js';
 import { DirectoryModal } from './components/DirectoryModal.js';
 import { EditActionBar } from './components/EditActionBar.js';
 import { IntroBubble } from './components/IntroBubble.js';
 import { MigrationNotice } from './components/MigrationNotice.js';
+import type { LaunchTask } from './components/NewChatModal.js';
+import { NewChatModal } from './components/NewChatModal.js';
+import { OverviewPanel } from './components/OverviewPanel.js';
 import { SettingsModal } from './components/SettingsModal.js';
 import { TerminalDrawer } from './components/TerminalDrawer.js';
 import { Tooltip } from './components/Tooltip.js';
 import { Button } from './components/ui/Button.js';
 import { Modal } from './components/ui/Modal.js';
 import { VersionIndicator } from './components/VersionIndicator.js';
+import { WalkControls } from './components/WalkControls.js';
 import { ZoomControls } from './components/ZoomControls.js';
-import { OFFICE_CANVAS_TEST_ID } from './constants.js';
+import { AREA_DEFAULT_COLORS, OFFICE_CANVAS_TEST_ID } from './constants.js';
 import { useDirectoryEditor } from './hooks/useDirectoryEditor.js';
 import { useEditorActions } from './hooks/useEditorActions.js';
 import { useEditorKeyboard } from './hooks/useEditorKeyboard.js';
@@ -34,6 +40,7 @@ import { ToolOverlay } from './office/components/ToolOverlay.js';
 import { EditorState } from './office/editor/editorState.js';
 import { EditorToolbar } from './office/editor/EditorToolbar.js';
 import { OfficeState } from './office/engine/officeState.js';
+import { addDepartmentRoom } from './office/layout/departmentRoom.js';
 import { exportLayoutToFile } from './office/layout/exportLayout.js';
 import { isRotatable } from './office/layout/furnitureCatalog.js';
 import { migrateLayoutColors } from './office/layout/layoutSerializer.js';
@@ -95,6 +102,9 @@ function App() {
     directoryRejection,
     directorySaved,
     directorySuggestions,
+    hubNodes,
+    tasks,
+    usage,
     agentDirectoryNames,
     externalAssetDirectories,
     lastSeenVersion,
@@ -163,9 +173,30 @@ function App() {
     agentSeenActivity,
   });
 
-  const launchIntoDirectory = useCallback((directory: Directory) => {
-    transport.send({ type: 'launchAgent', directoryPath: directory.path });
+  const launchIntoDirectory = useCallback((directory: Directory, task?: LaunchTask) => {
+    transport.send({
+      type: 'launchAgent',
+      directoryPath: directory.path,
+      prompt: task?.prompt,
+      label: task?.label,
+    });
   }, []);
+  const startSecretary = useCallback(() => {
+    transport.send({ type: 'startSecretary' });
+  }, []);
+  const startProjectLead = useCallback((directory: Directory) => {
+    transport.send({ type: 'startProjectLead', directoryPath: directory.path });
+  }, []);
+  // The Directory the new-chat modal is open for (launch with name + task).
+  const [newChatDirectory, setNewChatDirectory] = useState<Directory | null>(null);
+  const handleNewChatHere = useCallback(
+    (id: number) => {
+      const name = getOfficeState().characters.get(id)?.directoryName;
+      const directory = directories.find((d) => d.name === name);
+      if (directory) setNewChatDirectory(directory);
+    },
+    [directories],
+  );
   const mobileShell = useMobileShell({
     getOfficeState,
     terminalAgentIds,
@@ -260,6 +291,62 @@ function App() {
     [areaMappings, setAreaMappings],
   );
 
+  const hubNodeNames = useMemo(() => hubNodes.map((n) => n.name), [hubNodes]);
+
+  // "Abteilung gründen": save the Directory first; only once the host has
+  // accepted it (directorySaved, carrying the stored name) is the room built,
+  // the Area mapped and the lead started -- a refused path leaves no room behind.
+  const [departmentModal, setDepartmentModal] = useState<{
+    open: boolean;
+    error: string | null;
+    pending: string | null;
+  }>({ open: false, error: null, pending: null });
+  const openDepartmentModal = useCallback(
+    () => setDepartmentModal({ open: true, error: null, pending: null }),
+    [],
+  );
+  const submitDepartment = useCallback((values: DepartmentValues) => {
+    setDepartmentModal({ open: true, error: null, pending: values.name });
+    transport.send({
+      type: 'saveDirectory',
+      name: values.name,
+      path: values.path,
+      account: values.account,
+      ...(values.node ? { node: values.node } : {}),
+    });
+  }, []);
+  useEffect(() => {
+    const pending = departmentModal.pending;
+    if (pending === null || directorySaved === null) return;
+    const directory = directorySaved.directory;
+    if (directory.name !== pending) return;
+    const os = getOfficeState();
+    const color =
+      AREA_DEFAULT_COLORS[(os.getLayout().areas ?? []).length % AREA_DEFAULT_COLORS.length];
+    const room = addDepartmentRoom(os.getLayout(), directory.name, color);
+    if (!room.ok) {
+      setDepartmentModal({ open: true, error: room.reason, pending: null });
+      return;
+    }
+    os.rebuildFromLayout(room.layout);
+    transport.send({
+      type: 'saveLayout',
+      layout: room.layout as unknown as Record<string, unknown>,
+    });
+    handleAreaMappingChange(directory.name, directory.name, 'add');
+    startProjectLead(directory);
+    setDepartmentModal({ open: false, error: null, pending: null });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [directorySaved]);
+  useEffect(() => {
+    if (directoryRejection === null) return;
+    setDepartmentModal((prev) =>
+      prev.pending === null
+        ? prev
+        : { open: true, error: directoryRejection.reason, pending: null },
+    );
+  }, [directoryRejection]);
+
   // Toggle global Show Areas — persisted via setShowAreas message; runs server-
   // side through configPersistence.
   const onToggleShowAreas = useCallback(() => {
@@ -331,6 +418,21 @@ function App() {
   const handleCloseAgent = useCallback((id: number) => {
     transport.send({ type: 'closeAgent', id });
   }, []);
+  const handleAgentCommand = useCallback(
+    (id: number, command: 'compact' | 'restartWithHandover' | 'meeting') => {
+      transport.send({ type: 'agentCommand', id, command });
+      if (command === 'meeting') {
+        // Gather the project's other agents around their lead.
+        const os = getOfficeState();
+        const project = os.characters.get(id)?.directoryName;
+        const members = [...os.characters.values()]
+          .filter((c) => c.id !== id && !c.isSubagent && c.directoryName === project)
+          .map((c) => c.id);
+        os.gatherAround(id, members);
+      }
+    },
+    [],
+  );
 
   const { reveal: revealTerminal } = terminalDrawer;
   const { showTerminal: showMobileTerminal } = mobileShell;
@@ -354,6 +456,18 @@ function App() {
       }
     },
     [terminalAgentIds, isMobile, revealTerminal, showMobileTerminal],
+  );
+
+  // Talking to an agent from your own character: select it (label + follow)
+  // and open its terminal, as a click on it would.
+  const handleTalk = useCallback(
+    (agentId: number) => {
+      const os = getOfficeState();
+      os.selectedAgentId = agentId;
+      os.dismissBubble(agentId);
+      handleClick(agentId);
+    },
+    [handleClick],
   );
 
   // Card click when there is no terminal pane to switch (VS Code, or a
@@ -498,6 +612,17 @@ function App() {
                 jobs move to the card bar (+) and the floating Settings button. */}
           {!isMobile && <ZoomControls zoom={editor.zoom} onZoomChange={editor.handleZoomChange} />}
 
+          {!editor.isEditMode && (
+            <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 flex gap-4">
+              <WalkControls
+                getOfficeState={getOfficeState}
+                layoutReady={layoutReady}
+                onTalk={handleTalk}
+              />
+              {!officeReadOnly && <OverviewPanel tasks={tasks} usage={usage} />}
+            </div>
+          )}
+
           {/* Vignette overlay */}
           <div
             className="absolute inset-0 pointer-events-none"
@@ -578,6 +703,8 @@ function App() {
             zoom={editor.zoom}
             panRef={editor.panRef}
             onCloseAgent={handleCloseAgent}
+            onAgentCommand={handleAgentCommand}
+            onNewChatHere={handleNewChatHere}
             alwaysShowOverlay={alwaysShowOverlay}
           />
         </>
@@ -639,6 +766,10 @@ function App() {
           directories={directories}
           onAddDirectory={directoryEditor.add}
           onEditDirectory={directoryEditor.edit}
+          onLaunchWithTask={setNewChatDirectory}
+          onStartLead={startProjectLead}
+          onStartSecretary={startSecretary}
+          onFoundDepartment={openDepartmentModal}
           terminalAvailable={terminalAvailable}
           terminalUnavailableReason={terminalUnavailableReason}
         />
@@ -654,7 +785,7 @@ function App() {
             className="border-border! shadow-pixel"
             onClick={() => setIsSettingsOpen((v) => !v)}
           >
-            Settings
+            Einstellungen
           </Button>
         </div>
       )}
@@ -716,6 +847,10 @@ function App() {
           directories={directories}
           onAddDirectory={directoryEditor.add}
           onEditDirectory={directoryEditor.edit}
+          onLaunchWithTask={setNewChatDirectory}
+          onStartLead={startProjectLead}
+          onStartSecretary={startSecretary}
+          onFoundDepartment={openDepartmentModal}
           onCloseAgent={handleCloseAgent}
           keyboardOpen={keyboard.keyboardOpen}
         />
@@ -798,11 +933,30 @@ function App() {
       {/* Rendered at the composition root, not inside a launch surface: the
           drawer that opens it lives in BottomToolbar on desktop and
           MobileAgentBar on mobile, and both close as soon as it appears. */}
+      <DepartmentModal
+        isOpen={departmentModal.open}
+        error={departmentModal.error}
+        pending={departmentModal.pending !== null}
+        nodes={hubNodeNames}
+        onSubmit={submitDepartment}
+        onClose={() => setDepartmentModal({ open: false, error: null, pending: null })}
+      />
+      <NewChatModal
+        directory={newChatDirectory}
+        onSubmit={(directory, task) => {
+          setNewChatDirectory(null);
+          // Mobile slides over to the new terminal, like a plain launch from the + card.
+          if (isMobile) mobileShell.launch(directory, task);
+          else launchIntoDirectory(directory, task);
+        }}
+        onClose={() => setNewChatDirectory(null)}
+      />
       <DirectoryModal
         isOpen={directoryEditor.modal.open}
         editing={directoryEditor.modal.editing}
         error={directoryEditor.error}
         suggestions={directorySuggestions}
+        nodes={hubNodeNames}
         areas={areaLabels}
         assignedAreas={directoryEditor.assignedAreas}
         onSubmit={directoryEditor.submit}

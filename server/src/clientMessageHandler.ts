@@ -21,6 +21,12 @@ import {
 import { collectDirectorySuggestions } from './directorySuggestions.js';
 import { hostDirectory } from './hostDirectory.js';
 import { readLayoutFromFile, writeLayoutToFile } from './layoutPersistence.js';
+import { syncAccountHooks } from './projects/accountHooks.js';
+import { type AgentCommand, runAgentCommand } from './projects/agentCommands.js';
+import { startProjectLead } from './projects/projectLead.js';
+import { messageProjectLead, secretaryDir, startSecretary } from './projects/secretary.js';
+import { listTasks, setTaskApproval } from './projects/tasks.js';
+import { usageReport } from './projects/usage.js';
 import type { ConsentEffects } from './providers/hook/consentExecutor.js';
 import { applyConsentChoice } from './providers/hook/consentExecutor.js';
 import { hooksConsentRequest } from './providers/hook/consentGate.js';
@@ -84,7 +90,7 @@ const KEY_GHOST_HEADLESS_AGENTS = 'pixel-agents.ghostHeadlessAgents';
 const KEY_WATCH_ALL_SESSIONS = 'pixel-agents.watchAllSessions';
 const KEY_HOOKS_INFO_SHOWN = 'pixel-agents.hooksInfoShown';
 const KEY_SHOW_AREAS = 'pixel-agents.showAreas';
-const KEY_BYPASS_PERMISSIONS = 'pixel-agents.bypassPermissions';
+export const KEY_BYPASS_PERMISSIONS = 'pixel-agents.bypassPermissions';
 const KEY_SHOW_HOST_DIRECTORIES = 'pixel-agents.showHostDirectories';
 
 /**
@@ -93,7 +99,9 @@ const KEY_SHOW_HOST_DIRECTORIES = 'pixel-agents.showHostDirectories';
  * ptyManager means VS Code embedded mode, whose adapter contributes its
  * workspace folders instead and must not have this server's cwd added to them.
  */
-function hostDirectoriesFor(ctx: ClientMessageContext): HostDirectoryEntry[] {
+export function hostDirectoriesFor(
+  ctx: Pick<ClientMessageContext, 'ptyManager'>,
+): HostDirectoryEntry[] {
   return ctx.ptyManager ? [hostDirectory()] : [];
 }
 
@@ -151,6 +159,8 @@ export function handleClientMessage(
         { store, runtime, ptyManager: ctx.ptyManager, provider: claudeProvider },
         {
           directoryPath: msg.directoryPath as string | undefined,
+          prompt: msg.prompt as string | undefined,
+          label: msg.label as string | undefined,
           bypassPermissions: adapter?.getSetting(KEY_BYPASS_PERMISSIONS, false) ?? false,
         },
       );
@@ -357,7 +367,139 @@ export function handleClientMessage(
         suggestions: () =>
           collectDirectorySuggestions(claudeProvider, shownHostDirectoriesFor(ctx)),
       });
+      // A Directory naming a Claude account brings that account's hooks in
+      // line with the user's choice (installed only under granted consent).
+      if (msg.type === 'saveDirectory' && typeof msg.account === 'string' && msg.account.trim()) {
+        void syncAccountHooks(hostDirectoriesFor(ctx));
+      }
       break;
+
+    case 'agentCommand': {
+      const id = msg.id as number;
+      const reason = ctx.ptyManager
+        ? runAgentCommand({ store, ptyManager: ctx.ptyManager }, id, msg.command as AgentCommand)
+        : 'Das Terminal ist nicht verfügbar.';
+      if (reason) send({ type: 'agentCommandRejected', id, reason });
+      break;
+    }
+
+    case 'startSecretary': {
+      if (!runtime || !ctx.ptyManager) {
+        send({
+          type: 'projectLeadRejected',
+          directoryPath: secretaryDir(),
+          reason: 'Das Terminal ist nicht verfügbar.',
+        });
+        break;
+      }
+      const hubUrl = msg.hubMcpUrl;
+      const hubToken = msg.hubMcpToken;
+      const result = startSecretary(
+        {
+          store,
+          runtime,
+          ptyManager: ctx.ptyManager,
+          provider: claudeProvider,
+          hostDirectories: hostDirectoriesFor(ctx),
+          bypassPermissions: adapter?.getSetting(KEY_BYPASS_PERMISSIONS, false) ?? false,
+        },
+        typeof hubUrl === 'string' && typeof hubToken === 'string'
+          ? { url: hubUrl, token: hubToken }
+          : undefined,
+      );
+      if (!result.ok) {
+        send({ type: 'projectLeadRejected', directoryPath: secretaryDir(), reason: result.reason });
+      } else if (!result.launched) {
+        send({ type: 'agentSelected', id: result.agentId });
+      }
+      break;
+    }
+
+    case 'requestUsage':
+      send({ type: 'usageReport', accounts: usageReport(hostDirectoriesFor(ctx)) });
+      break;
+
+    case 'requestTasks':
+      send({ type: 'tasksLoaded', tasks: listTasks(hostDirectoriesFor(ctx)) });
+      break;
+
+    case 'setTaskApproval': {
+      const approved = msg.approved === true;
+      const result = setTaskApproval(
+        hostDirectoriesFor(ctx),
+        String(msg.directoryPath ?? ''),
+        String(msg.file ?? ''),
+        approved,
+      );
+      if (!result.ok) {
+        console.warn(`[Pixel Agents] setTaskApproval: ${result.reason}`);
+      } else if (runtime && ctx.ptyManager) {
+        messageProjectLead(
+          {
+            store,
+            runtime,
+            ptyManager: ctx.ptyManager,
+            provider: claudeProvider,
+            hostDirectories: hostDirectoriesFor(ctx),
+            bypassPermissions: adapter?.getSetting(KEY_BYPASS_PERMISSIONS, false) ?? false,
+          },
+          String(msg.directoryPath),
+          `Der Nutzer hat die Freigabe für die Aufgabe "${result.title}" (${String(msg.file)}) ${approved ? 'erteilt' : 'abgelehnt'}.`,
+        );
+      }
+      send({ type: 'tasksLoaded', tasks: listTasks(hostDirectoriesFor(ctx)) });
+      break;
+    }
+
+    case 'messageProjectLead': {
+      // From a hub, on the secretary's behalf. Fire-and-forget: the hub's tool
+      // has already answered the secretary.
+      if (!runtime || !ctx.ptyManager) break;
+      const result = messageProjectLead(
+        {
+          store,
+          runtime,
+          ptyManager: ctx.ptyManager,
+          provider: claudeProvider,
+          hostDirectories: hostDirectoriesFor(ctx),
+          bypassPermissions: adapter?.getSetting(KEY_BYPASS_PERMISSIONS, false) ?? false,
+        },
+        String(msg.directoryPath ?? ''),
+        String(msg.text ?? ''),
+      );
+      if (result.isError) console.warn(`[Pixel Agents] messageProjectLead: ${result.text}`);
+      break;
+    }
+
+    case 'startProjectLead': {
+      const directoryPath = msg.directoryPath as string;
+      if (!runtime || !ctx.ptyManager) {
+        send({
+          type: 'projectLeadRejected',
+          directoryPath,
+          reason: 'Das Terminal ist nicht verfügbar.',
+        });
+        break;
+      }
+      const result = startProjectLead(
+        {
+          store,
+          runtime,
+          ptyManager: ctx.ptyManager,
+          provider: claudeProvider,
+          hostDirectories: hostDirectoriesFor(ctx),
+          bypassPermissions: adapter?.getSetting(KEY_BYPASS_PERMISSIONS, false) ?? false,
+        },
+        directoryPath,
+      );
+      if (!result.ok) {
+        send({ type: 'projectLeadRejected', directoryPath, reason: result.reason });
+      } else if (!result.launched) {
+        // Already in the office: point the asking client at it.
+        send({ type: 'agentSelected', id: result.agentId });
+      }
+      break;
+    }
 
     default:
       // focusAgent is handled entirely client-side in standalone (it focuses the
@@ -591,6 +733,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
   // 6. Existing agents (either just restored, or from VS Code adapter if present)
   const agentIds: number[] = [];
   const directoryNames: Record<number, string> = {};
+  const labels: Record<number, string> = {};
   const externalAgents: Record<number, boolean> = {};
   const persistedSeats = adapter?.loadSeats() ?? {};
   const agentMeta: Record<number, { palette?: number; hueShift?: number; seatId?: string }> = {};
@@ -598,6 +741,9 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
     agentIds.push(id);
     if (agent.directoryName) {
       directoryNames[id] = agent.directoryName;
+    }
+    if (agent.label) {
+      labels[id] = agent.label;
     }
     if (agent.isExternal) {
       externalAgents[id] = true;
@@ -614,6 +760,7 @@ function handleWebviewReady(send: WsSend, ctx: ClientMessageContext): void {
     agents: agentIds,
     agentMeta,
     directoryNames,
+    labels,
     externalAgents,
   });
 

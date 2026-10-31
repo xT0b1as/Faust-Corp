@@ -25,10 +25,10 @@ export interface WebviewSettings {
 }
 
 /** Settings-modal label of the persistent skip-permissions toggle. */
-export const SKIP_PERMISSIONS_LABEL = 'Skip Permissions';
+export const SKIP_PERMISSIONS_LABEL = 'Ohne Rückfragen';
 
 /** Settings-modal label of standalone's host-Directory toggle. */
-export const SHOW_START_DIRECTORY_LABEL = 'Show Start Directory';
+export const SHOW_START_DIRECTORY_LABEL = 'Startordner zeigen';
 
 export async function runCommand(window: Page, command: string, attempts = 3): Promise<void> {
   // Retry the full command palette interaction up to 3 times.
@@ -568,13 +568,13 @@ async function ensureSettingsModalFits(surface: WebviewSurface): Promise<void> {
 
 export async function openSettingsModal(frame: WebviewSurface): Promise<Locator> {
   await ensureSettingsModalFits(frame);
-  const settingsButton = frame.locator('button', { hasText: 'Settings' });
+  const settingsButton = frame.locator('button', { hasText: 'Einstellungen' });
   await expect(settingsButton).toBeVisible({ timeout: WEBVIEW_TIMEOUT_MS });
   await settingsButton.click();
 
   const settingsModal = frame
     .locator('div.fixed')
-    .filter({ has: frame.getByText('Settings', { exact: true }) });
+    .filter({ has: frame.getByText('Einstellungen', { exact: true }) });
   await expect(settingsModal).toBeVisible({ timeout: WEBVIEW_TIMEOUT_MS });
   return settingsModal;
 }
@@ -604,19 +604,23 @@ export async function setSettings(frame: WebviewSurface, settings: WebviewSettin
   const settingsModal = await openSettingsModal(frame);
 
   if (settings.watchAllSessions !== undefined) {
-    await setCheckbox(settingsModal, 'Watch All Sessions', settings.watchAllSessions);
+    await setCheckbox(settingsModal, 'Alle Sessions beobachten', settings.watchAllSessions);
   }
   if (settings.hooksEnabled !== undefined) {
-    await setCheckbox(settingsModal, 'Instant Detection (Hooks)', settings.hooksEnabled);
+    await setCheckbox(settingsModal, 'Sofort Erkennung (Hooks)', settings.hooksEnabled);
   }
   if (settings.alwaysShowLabels !== undefined) {
-    await setCheckbox(settingsModal, 'Always Show Labels', settings.alwaysShowLabels);
+    await setCheckbox(settingsModal, 'Namen immer zeigen', settings.alwaysShowLabels);
   }
   if (settings.ghostHeadlessAgents !== undefined) {
-    await setCheckbox(settingsModal, 'Display Headless as Ghosts', settings.ghostHeadlessAgents);
+    await setCheckbox(
+      settingsModal,
+      'Agenten ohne Terminal als Geist',
+      settings.ghostHeadlessAgents,
+    );
   }
   if (settings.debugView !== undefined) {
-    await setCheckbox(settingsModal, 'Debug View', settings.debugView);
+    await setCheckbox(settingsModal, 'Debug Ansicht', settings.debugView);
   }
   if (settings.bypassPermissions !== undefined) {
     await setCheckbox(settingsModal, SKIP_PERMISSIONS_LABEL, settings.bypassPermissions);

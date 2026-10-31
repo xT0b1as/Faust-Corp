@@ -23,6 +23,10 @@ export interface PersistedAgent {
   /** Pre-Directory spelling of `directoryName`, written by releases up to
    *  v1.4.x. Read as a fallback on restore; never written. */
   folderName?: string;
+  /** Per-agent label (see agentCreated.label). */
+  label?: string;
+  /** 'lead' for a project's lead. */
+  projectRole?: 'lead' | 'secretary';
   teamName?: string;
   agentName?: string;
   isTeamLead?: boolean;

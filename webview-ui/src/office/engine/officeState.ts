@@ -14,6 +14,9 @@ import {
   MAX_PET_ID_LENGTH,
   PET_HIT_HALF_WIDTH,
   PET_HIT_HEIGHT,
+  PLAYER_ID,
+  PLAYER_PALETTE,
+  PLAYER_TALK_RANGE_TILES,
   WAITING_BUBBLE_DURATION_SEC,
 } from '../../constants.js';
 import { getAnimationFrames, getCatalogEntry, getOnStateType } from '../layout/furnitureCatalog.js';
@@ -59,6 +62,10 @@ export class OfficeState {
   furniture: FurnitureInstance[];
   walkableTiles: Array<{ col: number; row: number }>;
   characters: Map<number, Character> = new Map();
+  /** Per-agent labels from the server (agentCreated.label / existingAgents.labels).
+   *  Kept apart from the character so a label arriving before the layout (and
+   *  the character) is built is not lost. Shown instead of the Directory name. */
+  agentLabels: Map<number, string> = new Map();
   pets: Pet[] = [];
   /** Accumulated time for furniture animation frame cycling */
   furnitureAnimTimer = 0;
@@ -404,8 +411,12 @@ export class OfficeState {
   }
 
   /** Closest walkable tile to (col,row) not occupied by another character, or null. */
-  private closestFreeWalkableTile(col: number, row: number): { col: number; row: number } | null {
-    const occupied = new Set<string>();
+  private closestFreeWalkableTile(
+    col: number,
+    row: number,
+    reserved: ReadonlySet<string> = new Set(),
+  ): { col: number; row: number } | null {
+    const occupied = new Set<string>(reserved);
     for (const ch of this.characters.values()) {
       occupied.add(`${ch.tileCol},${ch.tileRow}`);
     }
@@ -545,6 +556,87 @@ export class OfficeState {
     this.greeter = ch;
   }
 
+  // ── The user's own character ────────────────────────────────
+
+  /** The user's walking character, or null while walking is off. Like the
+   *  greeter it is not in `characters`: never persisted, never seated,
+   *  never an agent. */
+  player: Character | null = null;
+  /** Camera follows the player until a manual pan; moving it again resumes. */
+  playerCameraFollow = true;
+
+  spawnPlayer(): void {
+    if (this.player) {
+      if (this.player.matrixEffect === 'despawn') startMatrixEffect(this.player, 'spawn');
+      return;
+    }
+    const middle = this.walkableTiles[Math.floor(this.walkableTiles.length / 2)];
+    const spawn = middle ? this.closestFreeWalkableTile(middle.col, middle.row) : null;
+    if (!spawn) return;
+    this.playerCameraFollow = true;
+    this.cameraFollowId = null;
+    const ch = createCharacter(PLAYER_ID, PLAYER_PALETTE, null, null, 0);
+    ch.isPlayer = true;
+    ch.isActive = false;
+    ch.state = CharacterState.IDLE;
+    ch.dir = Direction.DOWN;
+    ch.x = spawn.col * TILE_SIZE + TILE_SIZE / 2;
+    ch.y = spawn.row * TILE_SIZE + TILE_SIZE / 2;
+    ch.tileCol = spawn.col;
+    ch.tileRow = spawn.row;
+    startMatrixEffect(ch, 'spawn');
+    this.player = ch;
+  }
+
+  despawnPlayer(): void {
+    if (!this.player || this.player.matrixEffect === 'despawn') return;
+    startMatrixEffect(this.player, 'despawn');
+  }
+
+  /** One step (arrow keys / WASD). Turns in place when the tile is blocked;
+   *  ignored while a step is still under way. */
+  playerStep(dc: number, dr: number): void {
+    const ch = this.player;
+    if (!ch || ch.matrixEffect || ch.path.length > 0) return;
+    const col = ch.tileCol + dc;
+    const row = ch.tileRow + dr;
+    if (dc > 0) ch.dir = Direction.RIGHT;
+    else if (dc < 0) ch.dir = Direction.LEFT;
+    else if (dr > 0) ch.dir = Direction.DOWN;
+    else if (dr < 0) ch.dir = Direction.UP;
+    this.playerCameraFollow = true;
+    if (!isWalkable(col, row, this.tileMap, this.blockedTiles)) return;
+    ch.path = [{ col, row }];
+    ch.moveProgress = 0;
+    ch.state = CharacterState.WALK;
+  }
+
+  /** Walk to a tile (tap / click on the floor). */
+  playerWalkTo(col: number, row: number): boolean {
+    const ch = this.player;
+    if (!ch || ch.matrixEffect) return false;
+    const path = findPath(ch.tileCol, ch.tileRow, col, row, this.tileMap, this.blockedTiles);
+    if (path.length === 0) return false;
+    this.playerCameraFollow = true;
+    ch.path = path;
+    ch.moveProgress = 0;
+    ch.state = CharacterState.WALK;
+    return true;
+  }
+
+  /** The agent standing (or sitting) closest to the player, within talking range. */
+  agentNearPlayer(): number | null {
+    const p = this.player;
+    if (!p) return null;
+    let best: { id: number; d: number } | null = null;
+    for (const ch of this.characters.values()) {
+      if (ch.isSubagent) continue;
+      const d = Math.abs(ch.tileCol - p.tileCol) + Math.abs(ch.tileRow - p.tileRow);
+      if (d <= PLAYER_TALK_RANGE_TILES && (!best || d < best.d)) best = { id: ch.id, d };
+    }
+    return best?.id ?? null;
+  }
+
   /** Start the greeter's despawn effect and release the greeter camera. The
    *  character is dropped once the effect finishes (see update()).
    *  Idempotent — every close path (answer, Escape, hooksStatus) funnels here. */
@@ -570,6 +662,7 @@ export class OfficeState {
    *  automatic drivers: character follow and the greeter's ask. */
   breakCameraFollow(): void {
     this.cameraFollowId = null;
+    this.playerCameraFollow = false;
     this.cancelGreeterCamera();
   }
 
@@ -720,6 +813,20 @@ export class OfficeState {
     ch.frame = 0;
     ch.frameTimer = 0;
     return true;
+  }
+
+  /** A meeting: walk these agents to the free tiles closest to `hostId`. */
+  gatherAround(hostId: number, ids: number[]): void {
+    const host = this.characters.get(hostId);
+    if (!host) return;
+    // Tiles already promised to an earlier walker in this meeting.
+    const reserved = new Set<string>();
+    for (const id of ids) {
+      const spot = this.closestFreeWalkableTile(host.tileCol, host.tileRow, reserved);
+      if (!spot) break;
+      reserved.add(`${spot.col},${spot.row}`);
+      this.walkToTile(id, spot.col, spot.row);
+    }
   }
 
   /** Create a sub-agent character with the parent's palette. Returns the sub-agent ID. */
@@ -1137,6 +1244,28 @@ export class OfficeState {
       this.greeter = null;
     }
 
+    // The player walks where it is sent and otherwise stands still: same FSM as
+    // an idle agent, minus the wandering.
+    if (this.player) {
+      const effect = advanceMatrixEffect(this.player, dt);
+      if (effect === 'despawned') {
+        this.player = null;
+      } else if (effect === 'none') {
+        // Set before the FSM runs too: its first idle tick could otherwise
+        // still pick a random stroll.
+        this.player.wanderTimer = Number.POSITIVE_INFINITY;
+        updateCharacter(
+          this.player,
+          dt,
+          this.walkableTiles,
+          this.seats,
+          this.tileMap,
+          this.blockedTiles,
+        );
+        this.player.wanderTimer = Number.POSITIVE_INFINITY;
+      }
+    }
+
     const toDelete: number[] = [];
     for (const ch of this.characters.values()) {
       const effect = advanceMatrixEffect(ch, dt);
@@ -1201,6 +1330,7 @@ export class OfficeState {
   getCharacters(): Character[] {
     const chars = Array.from(this.characters.values());
     if (this.greeter) chars.push(this.greeter);
+    if (this.player) chars.push(this.player);
     return chars;
   }
 

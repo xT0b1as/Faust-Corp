@@ -235,6 +235,8 @@ export interface Character {
    *  per-consumer guard reads this flag. It exists for the render/e2e snapshot
    *  (testHooks.getCharacters) to tell the greeter from agents. */
   isGreeter?: boolean;
+  /** The user's own walking character (Faust Corp). */
+  isPlayer?: boolean;
 
   // -- Agent Teams --
   /** Team name this agent belongs to */

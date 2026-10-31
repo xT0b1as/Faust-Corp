@@ -174,3 +174,17 @@ export const PALETTE_COUNT = 6;
  *  clientMessageHandler to guard saveAgentSeats payloads from a remote or
  *  hand-edited source corrupting the stored values with out-of-range values. */
 export const HUE_SHIFT_MAX_DEG = 360;
+
+// ── Faust Corp: agent commands typed into a terminal ──
+/** Gap between typing a command's text and pressing Enter, so the TUI takes the
+ *  text as typing rather than a paste that swallows the Enter. */
+export const AGENT_COMMAND_SUBMIT_DELAY_MS = 250;
+/** Pause after /clear before the resume prompt, while the new session starts. */
+export const AGENT_COMMAND_CLEAR_SETTLE_MS = 2_000;
+/** Longest wait for an agent to finish writing its handover before giving up. */
+export const AGENT_COMMAND_HANDOVER_TIMEOUT_MS = 10 * 60_000;
+/** Delay before the secretary's message is typed into a project lead it just
+ *  started (the CLI queues it behind the lead's start prompt). */
+export const SECRETARY_LEAD_BOOT_MS = 8_000;
+/** Window in which phone notifications are bundled into one message. */
+export const NOTIFY_BATCH_MS = 20_000;

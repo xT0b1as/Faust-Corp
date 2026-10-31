@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import type { LaunchTask } from '../components/NewChatModal.js';
 import type { Directory } from '../hooks/useExtensionMessages.js';
 import type { TerminalDrawerController } from '../hooks/useTerminalDrawer.js';
 import type { OfficeState } from '../office/engine/officeState.js';
@@ -16,7 +17,7 @@ export interface MobileShellController {
   selectCard: (agentId: number) => void;
   /** A Directory picked from the + card's drawer: launch into it, then
    *  slide over once the new terminal appears. */
-  launch: (directory: Directory) => void;
+  launch: (directory: Directory, task?: LaunchTask) => void;
 }
 
 interface MobileShellInputs {
@@ -24,7 +25,7 @@ interface MobileShellInputs {
   terminalAgentIds: number[];
   drawer: TerminalDrawerController;
   focusedAgentId: number | null;
-  launchAgent: (directory: Directory) => void;
+  launchAgent: (directory: Directory, task?: LaunchTask) => void;
 }
 
 /**
@@ -54,9 +55,9 @@ export function useMobileShell({
   }, [lastOpened]);
 
   const launch = useCallback(
-    (directory: Directory) => {
+    (directory: Directory, task?: LaunchTask) => {
       pendingLaunchRef.current = true;
-      launchAgent(directory);
+      launchAgent(directory, task);
     },
     [launchAgent],
   );

@@ -560,3 +560,26 @@ export const VISUAL_VIEWPORT_FULL_EPSILON_PX = 1;
  *  (with an editable focused) = the software keyboard is up. Well above an
  *  address bar collapsing (~56 px), well below any on-screen keyboard. */
 export const KEYBOARD_MIN_HEIGHT_PX = 150;
+
+// ── Faust Corp: department rooms ─────────────────────────────
+/** Width of a new department's room in tiles, both walls included. */
+export const DEPARTMENT_ROOM_WIDTH = 10;
+/** Minimum height of a department room in tiles, both walls included. */
+export const DEPARTMENT_ROOM_MIN_HEIGHT = 9;
+/** Desks (with PC and seat) placed in a new department room. */
+export const DEPARTMENT_ROOM_DESKS = 2;
+
+// ── Faust Corp: your own character ───────────────────────────
+/** Reserved id for the user's own walking character (far from agents,
+ *  sub-agents and the greeter). */
+export const PLAYER_ID = -2_000_000_000;
+/** Palette of the user's character. */
+export const PLAYER_PALETTE = 5;
+/** How close (in tiles, Manhattan) an agent must be to talk to it. */
+export const PLAYER_TALK_RANGE_TILES = 2;
+/** How often the walk controls check for an agent within talking range. */
+export const PLAYER_NEAR_POLL_MS = 250;
+/** How often the open overview refreshes the task list (4x slower in the background, for the badge). */
+export const OVERVIEW_REFRESH_MS = 10_000;
+/** Label prefix of a project lead's character ("Wagner: <Directory>"). */
+export const LEAD_LABEL_PREFIX = 'Wagner:';

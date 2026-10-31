@@ -16,6 +16,14 @@ interface LaunchDrawerProps {
   onAddDirectory: () => void;
   /** Open the Directory modal pre-filled with this entry (user-defined rows). */
   onEditDirectory: (directory: Directory) => void;
+  /** Open the new-chat modal for this Directory (launch with a name and task). */
+  onLaunchWithTask: (directory: Directory) => void;
+  /** Bring up this Directory's project lead (sets up its memory folder first). */
+  onStartLead: (directory: Directory) => void;
+  /** Bring up the office's secretary (the pinned first row). */
+  onStartSecretary: () => void;
+  /** Open the found-a-department modal (pinned row). */
+  onFoundDepartment: () => void;
   className?: string;
 }
 
@@ -44,6 +52,10 @@ export function LaunchDrawer({
   onSelect,
   onAddDirectory,
   onEditDirectory,
+  onLaunchWithTask,
+  onStartLead,
+  onStartSecretary,
+  onFoundDepartment,
   className = '',
 }: LaunchDrawerProps) {
   return (
@@ -52,11 +64,21 @@ export function LaunchDrawer({
     // fitViewport: a long list must never push `+ Directory` above the top of
     // the screen, so the drawer is capped at the room above the button and
     // only the rows scroll.
-    <Dropdown isOpen={isOpen} fitViewport className={`min-w-128 ${className}`}>
+    <Dropdown
+      isOpen={isOpen}
+      fitViewport
+      className={`min-w-128 max-w-[calc(100vw-32px)] ${className}`}
+    >
       <div data-testid="launch-drawer" className="flex flex-col min-h-0">
         {/* DropdownItem hard-resets to border-none, so the separator lives on
             this wrapper. Pinned: it never scrolls away with the rows. */}
         <div className="shrink-0 border-b-2 border-border">
+          <DropdownItem onClick={onStartSecretary} className="text-base text-accent-bright">
+            Sekretär Lynkeus
+          </DropdownItem>
+          <DropdownItem onClick={onFoundDepartment} className="text-base text-accent-bright">
+            + Abteilung
+          </DropdownItem>
           <DropdownItem onClick={onAddDirectory} className="text-base text-accent-bright">
             + Directory
           </DropdownItem>
@@ -68,6 +90,8 @@ export function LaunchDrawer({
               directory={directory}
               onSelect={onSelect}
               onEditDirectory={onEditDirectory}
+              onLaunchWithTask={onLaunchWithTask}
+              onStartLead={onStartLead}
             />
           ))}
         </div>
@@ -80,9 +104,17 @@ interface DirectoryRowProps {
   directory: Directory;
   onSelect: (directory: Directory) => void;
   onEditDirectory: (directory: Directory) => void;
+  onLaunchWithTask: (directory: Directory) => void;
+  onStartLead: (directory: Directory) => void;
 }
 
-function DirectoryRow({ directory, onSelect, onEditDirectory }: DirectoryRowProps) {
+function DirectoryRow({
+  directory,
+  onSelect,
+  onEditDirectory,
+  onLaunchWithTask,
+  onStartLead,
+}: DirectoryRowProps) {
   const editable = directory.source === 'user';
   const longPressTimer = useRef<number | undefined>(undefined);
   const pressOrigin = useRef<{ x: number; y: number } | null>(null);
@@ -149,6 +181,24 @@ function DirectoryRow({ directory, onSelect, onEditDirectory }: DirectoryRowProp
           <span className="overflow-hidden text-ellipsis" title={directory.path}>
             {directory.name}
           </span>
+          {directory.node && (
+            <span
+              aria-hidden="true"
+              title={`Rechner: ${directory.node}`}
+              className="shrink-0 text-2xs text-text-muted border-2 border-border pl-4 pr-2 leading-none"
+            >
+              {directory.node}
+            </span>
+          )}
+          {directory.account && (
+            <span
+              aria-hidden="true"
+              title={`Claude Konto: ${directory.account}`}
+              className="shrink-0 text-2xs text-text-muted border-2 border-border pl-4 pr-2 leading-none"
+            >
+              {directory.account.split(/[\\/]/).pop()}
+            </span>
+          )}
           {directory.source === 'host' && (
             <span
               aria-hidden="true"
@@ -159,6 +209,34 @@ function DirectoryRow({ directory, onSelect, onEditDirectory }: DirectoryRowProp
           )}
         </span>
       </DropdownItem>
+      {/* Always visible, touch included: these are primary actions, not edit
+          affordances. */}
+      <button
+        onClick={() => onStartLead(directory)}
+        aria-label={`Projektleiter für ${directory.name}`}
+        title="Projektleiter (richtet das Projekt beim ersten Mal ein)"
+        className="shrink-0 self-stretch flex items-center px-8 pointer-coarse:px-14 bg-transparent border-none rounded-none cursor-pointer text-sm leading-none text-text-muted hover:text-text"
+      >
+        <span
+          className="material-symbols-sharp text-[12px] pointer-coarse:text-[18px]"
+          aria-hidden="true"
+        >
+          supervisor_account
+        </span>
+      </button>
+      <button
+        onClick={() => onLaunchWithTask(directory)}
+        aria-label={`Neuer Chat mit Auftrag in ${directory.name}`}
+        title="Neuer Chat mit Auftrag"
+        className="shrink-0 self-stretch flex items-center px-8 pointer-coarse:px-14 bg-transparent border-none rounded-none cursor-pointer text-sm leading-none text-text-muted hover:text-text"
+      >
+        <span
+          className="material-symbols-sharp text-[12px] pointer-coarse:text-[18px]"
+          aria-hidden="true"
+        >
+          add_task
+        </span>
+      </button>
       {editable && (
         // Hidden until the row is hovered (hover: only exists on devices that
         // have it) or the button is keyboard-focused; gone entirely on coarse

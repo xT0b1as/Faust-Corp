@@ -1,0 +1,23 @@
+# systemd user service: one Faust Corp node (agents, terminals, hooks).
+# Install:
+#   mkdir -p ~/.config/systemd/user
+#   cp faust-corp.service ~/.config/systemd/user/
+#   # adjust ExecStart (path to the repo, port, --allowed-host)
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now faust-corp
+#   loginctl enable-linger "$USER"   # keep running while logged out
+# Logs: journalctl --user -u faust-corp -f
+
+[Unit]
+Description=Faust Corp node
+After=network-online.target
+
+[Service]
+# The directory the server starts in is its start Directory.
+WorkingDirectory=%h
+ExecStart=/usr/bin/env node %h/Faust-Corp/dist/cli.js --port 3100 --allowed-host CHANGE-ME.tailnet.ts.net
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -1584,15 +1584,15 @@ test.describe('Hooks ON / lifecycle', () => {
     // Read whatever the fixture default is, then flip it. The persistence
     // assertion is about the FLIPPED state surviving a reload, not about the
     // initial default value.
-    const initial = await getSettingChecked(frame, 'Always Show Labels');
-    const initialGhost = await getSettingChecked(frame, 'Display Headless as Ghosts');
+    const initial = await getSettingChecked(frame, 'Namen immer zeigen');
+    const initialGhost = await getSettingChecked(frame, 'Agenten ohne Terminal als Geist');
     narrator.step('flipping "Always Show Labels" + "Display Headless as Ghosts" in Settings');
     await setSettings(frame, {
       alwaysShowLabels: !initial,
       ghostHeadlessAgents: !initialGhost,
     });
-    expect(await getSettingChecked(frame, 'Always Show Labels')).toBe(!initial);
-    expect(await getSettingChecked(frame, 'Display Headless as Ghosts')).toBe(!initialGhost);
+    expect(await getSettingChecked(frame, 'Namen immer zeigen')).toBe(!initial);
+    expect(await getSettingChecked(frame, 'Agenten ohne Terminal als Geist')).toBe(!initialGhost);
     narrator.check('both toggles are now flipped');
 
     // Force a fresh webview by closing and reopening the panel (same
@@ -1604,8 +1604,8 @@ test.describe('Hooks ON / lifecycle', () => {
 
     // After settingsLoaded re-hydrates, the toggle must still be in the
     // flipped state — not back to the fixture default.
-    expect(await getSettingChecked(frame, 'Always Show Labels')).toBe(!initial);
-    expect(await getSettingChecked(frame, 'Display Headless as Ghosts')).toBe(!initialGhost);
+    expect(await getSettingChecked(frame, 'Namen immer zeigen')).toBe(!initial);
+    expect(await getSettingChecked(frame, 'Agenten ohne Terminal als Geist')).toBe(!initialGhost);
     narrator.check('flipped state survives the reload — persisted through config.json');
   });
 
@@ -1654,7 +1654,7 @@ test.describe('Hooks ON / lifecycle', () => {
 
     // Enter edit mode.
     narrator.step('entering Layout mode');
-    const layoutButton = frame.locator('button', { hasText: 'Layout' });
+    const layoutButton = frame.locator('button', { hasText: 'Einrichten' });
     await expect(layoutButton).toBeVisible({ timeout: 15_000 });
     await layoutButton.click();
 
